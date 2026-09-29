@@ -25,6 +25,10 @@ from mabellah_sales_report import (
     generate_mabellah_sales_report
 )
 
+from store_pick_report import (
+    generate_store_pick_report
+)
+
 
 st.set_page_config(
     page_title="Sales Report Automation",
@@ -66,7 +70,7 @@ if uploaded_file is not None:
     # REPORT SELECTION
     # ==========================================================
 
-    col1, col2, col3, col4 = st.columns(4)
+    col1, col2, col3, col4, col5 = st.columns(5)
 
 
     with col1:
@@ -121,6 +125,19 @@ if uploaded_file is not None:
         )
 
 
+    with col5:
+
+        st.markdown("### 📦 Pick / Transfer")
+
+        st.write(
+            "Generate the store-wise Pick and Internal Transfer report."
+        )
+
+        pick_transfer_selected = st.checkbox(
+            "Select Pick / Internal Transfer Report"
+        )
+
+
     st.divider()
 
 
@@ -141,7 +158,8 @@ if uploaded_file is not None:
             target_selected,
             daywise_selected,
             salesman_selected,
-            mabellah_selected
+            mabellah_selected,
+            pick_transfer_selected
         ]):
 
             st.warning(
@@ -181,7 +199,8 @@ if uploaded_file is not None:
             target_selected,
             daywise_selected,
             salesman_selected,
-            mabellah_selected
+            mabellah_selected,
+            pick_transfer_selected
         ])
 
 
@@ -378,6 +397,48 @@ if uploaded_file is not None:
 
                 errors.append(
                     f"Mabellah Sales Report: {e}"
+                )
+
+            done += 1
+
+            progress.progress(
+                done / selected_count
+            )
+
+
+        # ======================================================
+        # STORE WISE PICK / INTERNAL TRANSFER REPORT
+        # ======================================================
+
+        if pick_transfer_selected:
+
+            try:
+
+                with st.spinner(
+                    "Generating Store Wise Pick / Internal Transfer Report..."
+                ):
+
+                    output = (
+                        workdir
+                        / "Store_Wise_Pick_Count_Report.xlsx"
+                    )
+
+                    generate_store_pick_report(
+                        str(input_path),
+                        str(output)
+                    )
+
+                    generated.append(
+                        (
+                            "📦 Store Wise Pick / Internal Transfer Report",
+                            output
+                        )
+                    )
+
+            except Exception as e:
+
+                errors.append(
+                    f"Store Wise Pick / Internal Transfer Report: {e}"
                 )
 
             done += 1
