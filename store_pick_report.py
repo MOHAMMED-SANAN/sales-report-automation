@@ -1,5 +1,6 @@
 # ============================================================
 # STORE WISE PICK / INTERNAL TRANSFER REPORT
+# FULL COMBINED + INDIVIDUAL STORE SHEETS
 # ============================================================
 
 import pandas as pd
@@ -9,272 +10,51 @@ from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 
 
-def generate_store_pick_report(file_path, output_file):
+# ============================================================
+# HELPER FUNCTION
+# ============================================================
 
-    # ============================================================
-    # 2. READ ALL SHEETS
-    #
-    # FIRST 4 ROWS ARE NOT REQUIRED
-    # ROW 5 = HEADER
-    # ============================================================
+def clean_sheet_name(name):
+    """
+    Excel sheet names:
+    - Maximum 31 characters
+    - Cannot contain: / \ ? * [ ]
+    """
+    invalid_chars = ['/', '\\', '?', '*', '[', ']']
 
-    all_sheets = pd.read_excel(
-        file_path,
-        sheet_name=None,
-        skiprows=4
-    )
+    name = str(name)
 
+    for char in invalid_chars:
+        name = name.replace(char, '_')
 
-    # ============================================================
-    # 3. SHEETS TO EXCLUDE
-    # ============================================================
+    name = name.strip()
 
-    EXCLUDED_SHEETS = [
-        "SPM_Virtual_Store",
-        "Export(SPM)",
-        "Virtual_Store_AD"
-    ]
+    if not name:
+        name = "Store"
+
+    return name[:31]
 
 
-    # ============================================================
-    # 4. SHOW ALL SHEETS
-    # ============================================================
+def make_report_data(filtered_data):
+    """
+    Create Store + Person + Operation Type report.
+    """
 
-    print("\nAll sheets found:")
-
-    for sheet_name in all_sheets.keys():
-        print(" -", sheet_name)
-
-
-    # ============================================================
-    # 5. PROCESS ONLY REQUIRED SHEETS
-    # ============================================================
-
-    all_data = []
-
-    for sheet_name, df in all_sheets.items():
-
-        # --------------------------------------------------------
-        # SKIP EXCLUDED SHEETS
-        # --------------------------------------------------------
-
-        if sheet_name in EXCLUDED_SHEETS:
-
-            print(f"SKIPPED: {sheet_name}")
-
-            continue
-
-        print(f"Processing: {sheet_name}")
-
-        # --------------------------------------------------------
-        # Remove completely empty rows
-        # --------------------------------------------------------
-
-        df = df.dropna(
-            how="all"
-        ).copy()
-
-        # --------------------------------------------------------
-        # Remove completely empty columns
-        # --------------------------------------------------------
-
-        df = df.dropna(
-            axis=1,
-            how="all"
+    if filtered_data.empty:
+        return pd.DataFrame(
+            columns=[
+                "STORE",
+                "Last Updated By",
+                "Operation Type",
+                "Distinct Count of Source Document",
+                "Sum of Demand Qty",
+                "ROW_TYPE"
+            ]
         )
 
-        # --------------------------------------------------------
-        # Clean column names
-        # --------------------------------------------------------
-
-        df.columns = (
-            df.columns
-            .astype(str)
-            .str.strip()
-        )
-
-        # --------------------------------------------------------
-        # ADD STORE COLUMN
-        #
-        # STORE = SHEET NAME
-        # --------------------------------------------------------
-
-        df.insert(
-            0,
-            "STORE",
-            sheet_name
-        )
-
-        # --------------------------------------------------------
-        # Add dataframe to list
-        # --------------------------------------------------------
-
-        all_data.append(df)
-
-
-    # ============================================================
-    # 6. CHECK WHETHER ANY SHEETS ARE AVAILABLE
-    # ============================================================
-
-    if not all_data:
-
-        raise ValueError(
-            "No valid sheets found after excluding the specified sheets."
-        )
-
-
-    # ============================================================
-    # 7. APPEND ALL VALID SHEETS
-    # ============================================================
-
-    combined_data = pd.concat(
-        all_data,
-        ignore_index=True
-    )
-
-
-    # ============================================================
-    # 8. CLEAN COLUMN NAMES
-    # ============================================================
-
-    combined_data.columns = (
-        combined_data.columns
-        .astype(str)
-        .str.strip()
-    )
-
-
-    # ============================================================
-    # 9. SHOW COMBINED DATA INFORMATION
-    # ============================================================
-
-    print("\n==============================================")
-    print("COMBINED DATA")
-    print("==============================================")
-
-    print("Rows:", len(combined_data))
-    print("Columns:", len(combined_data.columns))
-
-    print("\nColumns:")
-
-    for col in combined_data.columns:
-        print(" -", col)
-
-
-    # ============================================================
-    # 10. CHECK REQUIRED COLUMNS
-    # ============================================================
-
-    required_columns = [
-        "STORE",
-        "Source Document",
-        "Operation Type",
-        "Demand Qty",
-        "State",
-        "Last Updated By"
-    ]
-
-
-    missing_columns = [
-        col
-        for col in required_columns
-        if col not in combined_data.columns
-    ]
-
-
-    if missing_columns:
-
-        print("\nERROR - Missing columns:")
-
-        for col in missing_columns:
-            print(" -", col)
-
-        raise ValueError(
-            "Required columns are missing from the Excel file."
-        )
-
-
-    # ============================================================
-    # 11. CLEAN IMPORTANT COLUMNS
-    # ============================================================
-
-    combined_data["State"] = (
-        combined_data["State"]
-        .fillna("")
-        .astype(str)
-        .str.strip()
-    )
-
-
-    combined_data["Operation Type"] = (
-        combined_data["Operation Type"]
-        .fillna("")
-        .astype(str)
-        .str.strip()
-    )
-
-
-    combined_data["Last Updated By"] = (
-        combined_data["Last Updated By"]
-        .fillna("")
-        .astype(str)
-        .str.strip()
-    )
-
-
-    # ============================================================
-    # 12. CONVERT DEMAND QTY TO NUMBER
-    # ============================================================
-
-    combined_data["Demand Qty"] = pd.to_numeric(
-        combined_data["Demand Qty"],
-        errors="coerce"
-    ).fillna(0)
-
-
-    # ============================================================
-    # 13. FILTER DATA
-    #
-    # STATE = DONE
-    #
-    # OPERATION TYPE =
-    # PICK
-    # OR
-    # INTERNAL TRANSFERS
-    # ============================================================
-
-    filtered_data = combined_data[
-        (
-            combined_data["State"]
-            .str.lower()
-            == "done"
-        )
-        &
-        (
-            combined_data["Operation Type"]
-            .str.lower()
-            .isin([
-                "pick",
-                "internal transfers"
-            ])
-        )
-    ].copy()
-
-
-    # ============================================================
-    # 14. SHOW FILTER RESULT
-    # ============================================================
-
-    print("\n==============================================")
-    print("FILTERED DATA")
-    print("==============================================")
-
-    print("Filtered rows:", len(filtered_data))
-
-
-    # ============================================================
-    # 15. CREATE PIVOT DATA
-    # ============================================================
+    # ========================================================
+    # PIVOT
+    # ========================================================
 
     pivot_data = (
         filtered_data
@@ -298,12 +78,12 @@ def generate_store_pick_report(file_path, output_file):
         .reset_index()
     )
 
+    # ========================================================
+    # OPERATION ORDER
+    # Internal Transfers first
+    # Pick second
+    # ========================================================
 
-    # ============================================================
-    # 16. SORT PIVOT DATA
-    # ============================================================
-
-    # Keep Internal Transfers before Pick
     operation_order = {
         "internal transfers": 0,
         "pick": 1
@@ -311,6 +91,7 @@ def generate_store_pick_report(file_path, output_file):
 
     pivot_data["_operation_order"] = (
         pivot_data["Operation Type"]
+        .astype(str)
         .str.lower()
         .map(operation_order)
         .fillna(99)
@@ -330,21 +111,11 @@ def generate_store_pick_report(file_path, output_file):
         columns=["_operation_order"]
     )
 
-
-    # ============================================================
-    # 17. CREATE FINAL REPORT
-    #
-    # STORE + PERSON WILL APPEAR ONLY ONCE
-    #
-    # Example:
-    #
-    # Qusais_Sales SPM | KHAYAZ | Internal Transfers | 35 | 89
-    #                 |        | Pick              |  8 | 24
-    #
-    # ============================================================
+    # ========================================================
+    # FINAL DISPLAY
+    # ========================================================
 
     final_report = []
-
 
     for store, store_df in pivot_data.groupby(
         "STORE",
@@ -353,10 +124,6 @@ def generate_store_pick_report(file_path, output_file):
 
         first_store_row = True
 
-        # --------------------------------------------------------
-        # GROUP BY PERSON
-        # --------------------------------------------------------
-
         for person, person_df in store_df.groupby(
             "Last Updated By",
             sort=False
@@ -364,177 +131,309 @@ def generate_store_pick_report(file_path, output_file):
 
             first_person_row = True
 
-            # ----------------------------------------------------
-            # OPERATION ROWS
-            # ----------------------------------------------------
-
             for _, row in person_df.iterrows():
 
-                # STORE appears only on first row
                 if first_store_row:
-
                     display_store = store
-
                     first_store_row = False
-
                 else:
-
                     display_store = ""
 
-                # PERSON appears only on first row
                 if first_person_row:
-
                     display_person = person
-
                     first_person_row = False
-
                 else:
-
                     display_person = ""
 
                 final_report.append({
-
-                    "STORE":
-                        display_store,
-
-                    "Last Updated By":
-                        display_person,
-
-                    "Operation Type":
-                        row["Operation Type"],
-
+                    "STORE": display_store,
+                    "Last Updated By": display_person,
+                    "Operation Type": row["Operation Type"],
                     "Distinct Count of Source Document":
                         row["Distinct Count of Source Document"],
-
                     "Sum of Demand Qty":
                         row["Sum of Demand Qty"],
-
-                    "ROW_TYPE":
-                        "DATA"
-
+                    "ROW_TYPE": "DATA"
                 })
 
-
-        # ========================================================
+        # ====================================================
         # STORE TOTAL
-        # ========================================================
+        # ====================================================
 
-        store_source_count = (
-            filtered_data[
-                filtered_data["STORE"] == store
-            ]["Source Document"]
-            .nunique()
-        )
-
-
-        store_demand_qty = (
-            filtered_data[
-                filtered_data["STORE"] == store
-            ]["Demand Qty"]
-            .sum()
-        )
-
+        store_data = filtered_data[
+            filtered_data["STORE"] == store
+        ]
 
         final_report.append({
-
-            "STORE":
-                f"{store} Total",
-
-            "Last Updated By":
-                "",
-
-            "Operation Type":
-                "",
-
+            "STORE": f"{store} Total",
+            "Last Updated By": "",
+            "Operation Type": "",
             "Distinct Count of Source Document":
-                store_source_count,
-
+                store_data["Source Document"].nunique(),
             "Sum of Demand Qty":
-                store_demand_qty,
-
-            "ROW_TYPE":
-                "TOTAL"
-
+                store_data["Demand Qty"].sum(),
+            "ROW_TYPE": "TOTAL"
         })
 
+    return pd.DataFrame(final_report)
 
-    # ============================================================
-    # 18. CONVERT FINAL REPORT TO DATAFRAME
-    # ============================================================
 
-    final_report = pd.DataFrame(
-        final_report
+# ============================================================
+# MAIN FUNCTION
+# ============================================================
+
+def generate_store_pick_report(file_path, output_file):
+
+    # ========================================================
+    # 1. SHEETS TO EXCLUDE
+    # ========================================================
+
+    EXCLUDED_SHEETS = [
+        "SPM_Virtual_Store",
+        "Export(SPM)",
+        "Virtual_Store_AD"
+    ]
+
+    # ========================================================
+    # 2. READ ALL EXCEL SHEETS
+    # ========================================================
+
+    all_sheets = pd.read_excel(
+        file_path,
+        sheet_name=None,
+        skiprows=4
     )
 
+    print("\n==============================================")
+    print("ALL SHEETS")
+    print("==============================================")
 
-    # ============================================================
-    # 19. GRAND TOTAL
-    # ============================================================
+    for sheet_name in all_sheets.keys():
+        print(" -", sheet_name)
 
-    grand_source_count = (
-        filtered_data["Source Document"]
-        .nunique()
-    )
+    # ========================================================
+    # 3. REQUIRED COLUMNS
+    # ========================================================
 
+    required_columns = [
+        "Source Document",
+        "Operation Type",
+        "Demand Qty",
+        "State",
+        "Last Updated By"
+    ]
 
-    grand_demand_qty = (
-        filtered_data["Demand Qty"]
-        .sum()
-    )
+    # ========================================================
+    # 4. STORE-WISE FILTERED DATA
+    #
+    # Dictionary:
+    #
+    # {
+    #   "Qusais": filtered data,
+    #   "Dubai": filtered data,
+    #   ...
+    # }
+    # ========================================================
 
+    store_filtered_data = {}
 
-    grand_total = pd.DataFrame([{
+    # ========================================================
+    # 5. PROCESS EACH SHEET INDIVIDUALLY
+    # ========================================================
 
-        "STORE":
-            "Grand Total",
+    for sheet_name, df in all_sheets.items():
 
-        "Last Updated By":
-            "",
+        # ----------------------------------------------------
+        # EXCLUDE SHEETS
+        # ----------------------------------------------------
 
-        "Operation Type":
-            "",
+        if sheet_name in EXCLUDED_SHEETS:
 
-        "Distinct Count of Source Document":
-            grand_source_count,
+            print(f"\nSKIPPED: {sheet_name}")
 
-        "Sum of Demand Qty":
-            grand_demand_qty,
+            continue
 
-        "ROW_TYPE":
-            "GRAND_TOTAL"
+        print(f"\nProcessing: {sheet_name}")
 
-    }])
+        # ----------------------------------------------------
+        # REMOVE EMPTY ROWS / COLUMNS
+        # ----------------------------------------------------
 
+        df = df.dropna(
+            how="all"
+        ).copy()
 
-    final_report = pd.concat(
-        [
-            final_report,
-            grand_total
-        ],
+        df = df.dropna(
+            axis=1,
+            how="all"
+        )
+
+        # ----------------------------------------------------
+        # CLEAN COLUMN NAMES
+        # ----------------------------------------------------
+
+        df.columns = (
+            df.columns
+            .astype(str)
+            .str.strip()
+        )
+
+        # ----------------------------------------------------
+        # CHECK REQUIRED COLUMNS
+        # ----------------------------------------------------
+
+        missing_columns = [
+            col
+            for col in required_columns
+            if col not in df.columns
+        ]
+
+        if missing_columns:
+
+            print(
+                f"SKIPPED: {sheet_name} "
+                f"(missing columns: {missing_columns})"
+            )
+
+            continue
+
+        # ----------------------------------------------------
+        # CLEAN IMPORTANT COLUMNS
+        # ----------------------------------------------------
+
+        df["State"] = (
+            df["State"]
+            .fillna("")
+            .astype(str)
+            .str.strip()
+        )
+
+        df["Operation Type"] = (
+            df["Operation Type"]
+            .fillna("")
+            .astype(str)
+            .str.strip()
+        )
+
+        df["Last Updated By"] = (
+            df["Last Updated By"]
+            .fillna("")
+            .astype(str)
+            .str.strip()
+        )
+
+        # ----------------------------------------------------
+        # DEMAND QTY
+        # ----------------------------------------------------
+
+        df["Demand Qty"] = pd.to_numeric(
+            df["Demand Qty"],
+            errors="coerce"
+        ).fillna(0)
+
+        # ====================================================
+        # FILTER THIS SHEET
+        #
+        # State = DONE
+        #
+        # AND
+        #
+        # Operation Type =
+        #     PICK
+        #     OR
+        #     INTERNAL TRANSFERS
+        # ====================================================
+
+        filtered_df = df[
+            (
+                df["State"]
+                .str.lower()
+                == "done"
+            )
+            &
+            (
+                df["Operation Type"]
+                .str.lower()
+                .isin([
+                    "pick",
+                    "internal transfers"
+                ])
+            )
+        ].copy()
+
+        # ----------------------------------------------------
+        # SHEET NAME = STORE
+        # ----------------------------------------------------
+
+        filtered_df.insert(
+            0,
+            "STORE",
+            sheet_name
+        )
+
+        store_filtered_data[
+            sheet_name
+        ] = filtered_df
+
+        print(
+            f"Total rows in sheet: {len(df)}"
+        )
+
+        print(
+            f"Pick/Internal Transfer rows: "
+            f"{len(filtered_df)}"
+        )
+
+    # ========================================================
+    # 6. CHECK DATA
+    # ========================================================
+
+    valid_store_data = {
+        store: data
+        for store, data in store_filtered_data.items()
+        if not data.empty
+    }
+
+    if not valid_store_data:
+
+        raise ValueError(
+            "No valid Pick/Internal Transfer data found."
+        )
+
+    # ========================================================
+    # 7. COMBINE ALL FILTERED STORE DATA
+    #
+    # IMPORTANT:
+    # We combine ONLY filtered rows.
+    # ========================================================
+
+    combined_filtered_data = pd.concat(
+        valid_store_data.values(),
         ignore_index=True
     )
 
+    # ========================================================
+    # 8. CREATE FULL COMBINED REPORT
+    # ========================================================
 
-    # ============================================================
-    # 20. REMOVE ROW_TYPE FROM DISPLAY
-    # ============================================================
+    combined_report = make_report_data(
+        combined_filtered_data
+    )
 
-    report_display = final_report.drop(
+    combined_display = combined_report.drop(
         columns=["ROW_TYPE"]
     )
 
-
-    # ============================================================
-    # 21. CREATE DYNAMIC TITLE
-    # ============================================================
+    # ========================================================
+    # 9. CREATE DYNAMIC TITLE
+    # ========================================================
 
     title_text = "STORE WISE PICK COUNT REPORT"
 
-
-    if "Source Document Date" in combined_data.columns:
+    if "Source Document Date" in combined_filtered_data.columns:
 
         dates = pd.to_datetime(
-            combined_data["Source Document Date"],
+            combined_filtered_data["Source Document Date"],
             errors="coerce",
             dayfirst=True
         )
@@ -549,111 +448,121 @@ def generate_store_pick_report(file_path, output_file):
                 f"- {latest_date.day}"
             )
 
-
-    print("\n==============================================")
-    print("REPORT TITLE")
-    print("==============================================")
-
-    print(title_text)
-
-
-    # ============================================================
-    # 22. OUTPUT FILE NAME
-    # ============================================================
-
-
-
-
-    # ============================================================
-    # 23. WRITE EXCEL
+    # ========================================================
+    # 10. CREATE EXCEL
     #
-    # ROW 1 = TITLE
-    # ROW 2 = HEADER
-    # ROW 3 = DATA
-    # ============================================================
+    # SHEETS:
+    #
+    # 1. Store Wise Report
+    # 2. Each individual store
+    # ========================================================
 
     with pd.ExcelWriter(
         output_file,
         engine="openpyxl"
     ) as writer:
 
-        # --------------------------------------------------------
-        # COMBINED DATA SHEET
-        # --------------------------------------------------------
+        # ====================================================
+        # FULL COMBINED STORE REPORT
+        # ====================================================
 
-        combined_data.to_excel(
-            writer,
-            sheet_name="Combined Data",
-            index=False
-        )
-
-        # --------------------------------------------------------
-        # FILTERED DATA SHEET
-        # --------------------------------------------------------
-
-        filtered_data.to_excel(
-            writer,
-            sheet_name="Filtered Data",
-            index=False
-        )
-
-        # --------------------------------------------------------
-        # STORE WISE REPORT
-        # --------------------------------------------------------
-
-        report_display.to_excel(
+        combined_display.to_excel(
             writer,
             sheet_name="Store Wise Report",
             index=False,
             startrow=1
         )
 
+        # ====================================================
+        # INDIVIDUAL STORE REPORTS
+        # ====================================================
 
-    # ============================================================
-    # 24. OPEN WORKBOOK
-    # ============================================================
+        used_sheet_names = {
+            "Store Wise Report"
+        }
+
+        for store, store_df in valid_store_data.items():
+
+            # -----------------------------------------------
+            # Create report for this store only
+            # -----------------------------------------------
+
+            individual_report = make_report_data(
+                store_df
+            )
+
+            individual_display = individual_report.drop(
+                columns=["ROW_TYPE"]
+            )
+
+            # -----------------------------------------------
+            # Safe Excel sheet name
+            # -----------------------------------------------
+
+            base_sheet_name = clean_sheet_name(
+                store
+            )
+
+            sheet_name = base_sheet_name
+
+            counter = 1
+
+            while sheet_name in used_sheet_names:
+
+                suffix = f"_{counter}"
+
+                sheet_name = (
+                    base_sheet_name[:31 - len(suffix)]
+                    + suffix
+                )
+
+                counter += 1
+
+            used_sheet_names.add(
+                sheet_name
+            )
+
+            # -----------------------------------------------
+            # Write individual report
+            # -----------------------------------------------
+
+            individual_display.to_excel(
+                writer,
+                sheet_name=sheet_name,
+                index=False,
+                startrow=1
+            )
+
+    # ========================================================
+    # 11. OPEN WORKBOOK FOR FORMATTING
+    # ========================================================
 
     wb = load_workbook(
         output_file
     )
 
-
-    # ============================================================
-    # 25. COLORS
-    # ============================================================
+    # ========================================================
+    # 12. STYLES
+    # ========================================================
 
     yellow_fill = PatternFill(
         "solid",
         fgColor="FFFF00"
     )
 
-
     dark_blue_fill = PatternFill(
         "solid",
         fgColor="1F4E78"
     )
-
-
-    blue_fill = PatternFill(
-        "solid",
-        fgColor="4472C4"
-    )
-
-
-    # ============================================================
-    # 26. FONTS
-    # ============================================================
 
     white_font = Font(
         color="FFFFFF",
         bold=True
     )
 
-
     bold_font = Font(
         bold=True
     )
-
 
     title_font = Font(
         bold=True,
@@ -661,16 +570,10 @@ def generate_store_pick_report(file_path, output_file):
         color="1F4E78"
     )
 
-
-    # ============================================================
-    # 27. BORDER
-    # ============================================================
-
     thin_side = Side(
         style="thin",
         color="000000"
     )
-
 
     border = Border(
         left=thin_side,
@@ -679,330 +582,214 @@ def generate_store_pick_report(file_path, output_file):
         bottom=thin_side
     )
 
+    # ========================================================
+    # 13. FORMAT ALL REPORT SHEETS
+    # ========================================================
 
-    # ============================================================
-    # 28. FORMAT COMBINED DATA
-    # ============================================================
+    for ws in wb.worksheets:
 
-    ws = wb["Combined Data"]
+        # ----------------------------------------------------
+        # TITLE
+        # ----------------------------------------------------
 
-    ws.freeze_panes = "A2"
-
-
-    for cell in ws[1]:
-
-        cell.fill = blue_fill
-
-        cell.font = white_font
-
-        cell.alignment = Alignment(
-            horizontal="center",
-            vertical="center"
+        ws.merge_cells(
+            "A1:E1"
         )
 
-        cell.border = border
+        if ws.title == "Store Wise Report":
 
-
-    # Auto column width
-
-    for column_cells in ws.columns:
-
-        max_length = 0
-
-        column_letter = get_column_letter(
-            column_cells[0].column
-        )
-
-        for cell in column_cells:
-
-            if cell.value is not None:
-
-                max_length = max(
-                    max_length,
-                    len(str(cell.value))
-                )
-
-        ws.column_dimensions[
-            column_letter
-        ].width = min(
-            max_length + 2,
-            35
-        )
-
-
-    # ============================================================
-    # 29. FORMAT FILTERED DATA
-    # ============================================================
-
-    ws = wb["Filtered Data"]
-
-    ws.freeze_panes = "A2"
-
-
-    for cell in ws[1]:
-
-        cell.fill = blue_fill
-
-        cell.font = white_font
-
-        cell.alignment = Alignment(
-            horizontal="center",
-            vertical="center"
-        )
-
-        cell.border = border
-
-
-    for column_cells in ws.columns:
-
-        max_length = 0
-
-        column_letter = get_column_letter(
-            column_cells[0].column
-        )
-
-        for cell in column_cells:
-
-            if cell.value is not None:
-
-                max_length = max(
-                    max_length,
-                    len(str(cell.value))
-                )
-
-        ws.column_dimensions[
-            column_letter
-        ].width = min(
-            max_length + 2,
-            35
-        )
-
-
-    # ============================================================
-    # 30. FORMAT STORE WISE REPORT
-    # ============================================================
-
-    ws = wb["Store Wise Report"]
-
-
-    # ============================================================
-    # 31. TITLE
-    # ============================================================
-
-    ws.merge_cells(
-        "A1:E1"
-    )
-
-
-    ws["A1"] = title_text
-
-
-    ws["A1"].font = title_font
-
-
-    ws["A1"].alignment = Alignment(
-        horizontal="center",
-        vertical="center"
-    )
-
-
-    ws["A1"].fill = yellow_fill
-
-
-    ws.row_dimensions[1].height = 25
-
-
-    # ============================================================
-    # 32. HEADER
-    # ============================================================
-
-    for cell in ws[2]:
-
-        cell.fill = dark_blue_fill
-
-        cell.font = white_font
-
-        cell.alignment = Alignment(
-            horizontal="center",
-            vertical="center",
-            wrap_text=True
-        )
-
-        cell.border = border
-
-
-    ws.row_dimensions[2].height = 22
-
-
-    # ============================================================
-    # 33. DATA ROWS
-    # ============================================================
-
-    for row in ws.iter_rows(
-        min_row=3,
-        max_row=ws.max_row,
-        min_col=1,
-        max_col=5
-    ):
-
-        store_value = row[0].value
-
-        # --------------------------------------------------------
-        # STORE TOTAL / GRAND TOTAL
-        # --------------------------------------------------------
-
-        if (
-            store_value
-            and
-            (
-                str(store_value).endswith(" Total")
-                or
-                str(store_value) == "Grand Total"
-            )
-        ):
-
-            for cell in row:
-
-                cell.fill = yellow_fill
-
-                cell.font = bold_font
-
-                cell.border = border
-
-                cell.alignment = Alignment(
-                    horizontal="center",
-                    vertical="center"
-                )
-
-        # --------------------------------------------------------
-        # NORMAL DATA ROW
-        # --------------------------------------------------------
+            ws["A1"] = title_text
 
         else:
 
-            for cell in row:
+            ws["A1"] = (
+                f"{ws.title.upper()} "
+                f"- PICK / INTERNAL TRANSFER REPORT"
+            )
 
-                cell.border = border
+        ws["A1"].font = title_font
 
-                cell.alignment = Alignment(
-                    horizontal="center",
-                    vertical="center"
+        ws["A1"].alignment = Alignment(
+            horizontal="center",
+            vertical="center"
+        )
+
+        ws["A1"].fill = yellow_fill
+
+        ws.row_dimensions[1].height = 25
+
+        # ----------------------------------------------------
+        # HEADER
+        # ----------------------------------------------------
+
+        for cell in ws[2]:
+
+            cell.fill = dark_blue_fill
+
+            cell.font = white_font
+
+            cell.alignment = Alignment(
+                horizontal="center",
+                vertical="center",
+                wrap_text=True
+            )
+
+            cell.border = border
+
+        ws.row_dimensions[2].height = 30
+
+        # ----------------------------------------------------
+        # DATA ROWS
+        # ----------------------------------------------------
+
+        for row in ws.iter_rows(
+            min_row=3,
+            max_row=ws.max_row,
+            min_col=1,
+            max_col=5
+        ):
+
+            store_value = row[0].value
+
+            # ----------------------------------------------
+            # TOTAL ROWS
+            # ----------------------------------------------
+
+            if (
+                store_value
+                and
+                (
+                    str(store_value).endswith(" Total")
+                    or
+                    str(store_value) == "Grand Total"
                 )
+            ):
 
+                for cell in row:
 
-    # ============================================================
-    # 34. NUMBER FORMATTING
-    # ============================================================
+                    cell.fill = yellow_fill
 
-    for row in ws.iter_rows(
-        min_row=3,
-        max_row=ws.max_row
-    ):
+                    cell.font = bold_font
 
-        # Distinct Count
-        row[3].number_format = "0"
+                    cell.border = border
 
-        # Demand Qty
-        row[4].number_format = "0"
+                    cell.alignment = Alignment(
+                        horizontal="center",
+                        vertical="center"
+                    )
 
+            # ----------------------------------------------
+            # NORMAL ROW
+            # ----------------------------------------------
 
-    # ============================================================
-    # 35. COLUMN WIDTHS
-    # ============================================================
+            else:
 
-    ws.column_dimensions["A"].width = 28
+                for cell in row:
 
-    ws.column_dimensions["B"].width = 36
+                    cell.border = border
 
-    ws.column_dimensions["C"].width = 23
+                    cell.alignment = Alignment(
+                        horizontal="center",
+                        vertical="center"
+                    )
 
-    ws.column_dimensions["D"].width = 43
+        # ----------------------------------------------------
+        # NUMBER FORMATTING
+        # ----------------------------------------------------
 
-    ws.column_dimensions["E"].width = 30
+        for row in ws.iter_rows(
+            min_row=3,
+            max_row=ws.max_row
+        ):
 
+            row[3].number_format = "0"
+            row[4].number_format = "0"
 
-    # ============================================================
-    # 36. ROW HEIGHT
-    # ============================================================
+        # ----------------------------------------------------
+        # COLUMN WIDTHS
+        # ----------------------------------------------------
 
-    for row_number in range(
-        3,
-        ws.max_row + 1
-    ):
+        ws.column_dimensions["A"].width = 28
+        ws.column_dimensions["B"].width = 36
+        ws.column_dimensions["C"].width = 23
+        ws.column_dimensions["D"].width = 43
+        ws.column_dimensions["E"].width = 30
 
-        ws.row_dimensions[
-            row_number
-        ].height = 20
+        # ----------------------------------------------------
+        # ROW HEIGHT
+        # ----------------------------------------------------
 
+        for row_number in range(
+            3,
+            ws.max_row + 1
+        ):
 
-    # ============================================================
-    # 37. FREEZE HEADER
-    # ============================================================
+            ws.row_dimensions[
+                row_number
+            ].height = 20
 
-    ws.freeze_panes = "A3"
+        # ----------------------------------------------------
+        # FREEZE HEADER
+        # ----------------------------------------------------
 
+        ws.freeze_panes = "A3"
 
-    # ============================================================
-    # 38. AUTO FILTER
-    # ============================================================
+        # ----------------------------------------------------
+        # AUTO FILTER
+        # ----------------------------------------------------
 
-    ws.auto_filter.ref = (
-        f"A2:E{ws.max_row}"
-    )
+        if ws.max_row >= 2:
 
+            ws.auto_filter.ref = (
+                f"A2:E{ws.max_row}"
+            )
 
-    # ============================================================
-    # 39. SAVE FILE
-    # ============================================================
+    # ========================================================
+    # 14. SAVE
+    # ========================================================
 
     wb.save(
         output_file
     )
 
-
-    # ============================================================
-    # 40. SUCCESS MESSAGE
-    # ============================================================
+    # ========================================================
+    # 15. SUCCESS MESSAGE
+    # ========================================================
 
     print("\n")
     print("==============================================")
     print("       REPORT CREATED SUCCESSFULLY")
     print("==============================================")
 
-
     print(
         "Output file:",
         output_file
     )
 
-
     print("\nExcluded sheets:")
 
     for sheet in EXCLUDED_SHEETS:
-
         print(" -", sheet)
 
+    print("\nCreated sheets:")
 
-    print("\nReport contains:")
+    print(" - Store Wise Report (ALL STORES COMBINED)")
 
-    print("1. Combined Data")
-    print("2. Filtered Data")
-    print("3. Store Wise Report")
+    for store in valid_store_data.keys():
+        print(" -", store)
 
+    print("\nReport logic:")
 
-    print(
-        "\nStore and person names appear only on their first row."
-    )
-
-    print(
-        "Excluded sheets are NOT included in the report."
-    )
-
-    print(
-        "Store totals and Grand Total are included."
-    )
+    print("1. Each Excel sheet is treated as a STORE.")
+    print("2. Each sheet is filtered individually.")
+    print("3. State must be DONE.")
+    print("4. Operation Type must be PICK or INTERNAL TRANSFERS.")
+    print("5. Only filtered rows are combined.")
+    print("6. Full combined Store Wise Report is created.")
+    print("7. Individual report sheet is created for every store.")
+    print("8. Store totals include Pick + Internal Transfers.")
+    print("9. Grand Total includes all stores.")
 
     print("==============================================")
-
 
     return output_file
