@@ -1,3 +1,23 @@
+# ============================================================
+# STORE WISE PICK / INTERNAL TRANSFER REPORT
+#
+# OUTPUT:
+# 1. Store Wise Report -> ALL STORES COMBINED
+# 2. One sheet for EACH STORE
+#
+# FILTER:
+# - State = Done
+# - Operation Type = Pick OR Internal Transfers
+#
+# HEADING:
+# STORE WISE PICK COUNT <MONTH> - <DAY>
+# Example:
+# STORE WISE PICK COUNT SEPTEMBER - 29
+#
+# Date comes from:
+# Source Document Date
+# ============================================================
+
 import pandas as pd
 
 from openpyxl import load_workbook
@@ -39,7 +59,47 @@ def clean_sheet_name(name):
 
 
 # ============================================================
-# 3. FILTER ONE SHEET
+# 3. CREATE REPORT TITLE
+#
+# Source Document Date is used.
+#
+# Example:
+# STORE WISE PICK COUNT SEPTEMBER - 29
+# ============================================================
+
+def create_report_title(data):
+
+    default_title = "STORE WISE PICK COUNT REPORT"
+
+    if (
+        data is None
+        or data.empty
+        or "Source Document Date" not in data.columns
+    ):
+        return default_title
+
+    dates = pd.to_datetime(
+        data["Source Document Date"],
+        errors="coerce",
+        dayfirst=True
+    )
+
+    dates = dates.dropna()
+
+    if dates.empty:
+        return default_title
+
+    latest_date = dates.max()
+
+    return (
+        "STORE WISE PICK COUNT "
+        f"{latest_date.strftime('%B').upper()} "
+        f"- {latest_date.day}"
+    )
+
+
+# ============================================================
+# 4. FILTER ONE SHEET
 # ============================================================
 
 def filter_store_data(df, store_name):
@@ -80,7 +140,8 @@ def filter_store_data(df, store_name):
         "Operation Type",
         "Demand Qty",
         "State",
-        "Last Updated By"
+        "Last Updated By",
+        "Source Document Date"
     ]
 
     missing_columns = [
@@ -144,6 +205,16 @@ def filter_store_data(df, store_name):
         errors="coerce"
     ).fillna(0)
 
+    # --------------------------------------------------------
+    # Source Document Date
+    # --------------------------------------------------------
+
+    df["Source Document Date"] = pd.to_datetime(
+        df["Source Document Date"],
+        errors="coerce",
+        dayfirst=True
+    )
+
     # ========================================================
     # IMPORTANT FILTER
     #
@@ -188,21 +259,26 @@ def filter_store_data(df, store_name):
 
 
 # ============================================================
-# 4. CREATE REPORT
+# 5. CREATE REPORT
 #
-# This creates EXACTLY this type of layout:
+# Example:
 #
-# STORE | Last Updated By | Operation Type | Count | Qty
-#
-# WH_Rashidiya(SPM) | CHHATRA | Internal Transfers | 1 | 8
-#                    |         | Pick              | 3 | 9
-#                    | NIRANJ  | Pick              | 62| 2031
-# WH_Rashidiya(SPM) Total                         | 66| 2048
+# STORE              Last Updated By     Operation Type
+# WH_Rashidiya(SPM)  CHHATRA BHANDARA    Internal Transfers
+#                                        Pick
+#                    NIRANJ.K.R          Pick
+# WH_Rashidiya(SPM) Total
 # ============================================================
 
-def create_store_report(filtered_data, include_grand_total=False):
+def create_store_report(
+    filtered_data,
+    include_grand_total=False
+):
 
-    if filtered_data is None or filtered_data.empty:
+    if (
+        filtered_data is None
+        or filtered_data.empty
+    ):
 
         return pd.DataFrame(
             columns=[
@@ -350,8 +426,6 @@ def create_store_report(filtered_data, include_grand_total=False):
 
         # ====================================================
         # STORE TOTAL
-        #
-        # Pick + Internal Transfers together
         # ====================================================
 
         store_data = filtered_data[
@@ -387,7 +461,6 @@ def create_store_report(filtered_data, include_grand_total=False):
 
     # ========================================================
     # GRAND TOTAL
-    #
     # ONLY FOR FULL COMBINED REPORT
     # ========================================================
 
@@ -424,12 +497,16 @@ def create_store_report(filtered_data, include_grand_total=False):
 
 
 # ============================================================
-# 5. FORMAT ONE REPORT SHEET
+# 6. FORMAT REPORT SHEET
+#
+# Row 1 = TITLE
+# Row 2 = HEADER
+# Row 3 onward = DATA
 # ============================================================
 
 def format_report_sheet(
     ws,
-    is_combined=False
+    title_text
 ):
 
     # ========================================================
@@ -451,6 +528,12 @@ def format_report_sheet(
         bold=True
     )
 
+    title_font = Font(
+        bold=True,
+        size=14,
+        color="1F4E78"
+    )
+
     bold_font = Font(
         bold=True
     )
@@ -468,13 +551,36 @@ def format_report_sheet(
     )
 
     # ========================================================
-    # HEADER
+    # TITLE
     #
-    # Header starts at ROW 1
-    # Just like your screenshot
+    # Example:
+    # STORE WISE PICK COUNT SEPTEMBER - 29
     # ========================================================
 
-    for cell in ws[1]:
+    ws.merge_cells(
+        "A1:E1"
+    )
+
+    ws["A1"] = title_text
+
+    ws["A1"].fill = yellow_fill
+
+    ws["A1"].font = title_font
+
+    ws["A1"].alignment = Alignment(
+        horizontal="center",
+        vertical="center"
+    )
+
+    ws["A1"].border = border
+
+    ws.row_dimensions[1].height = 30
+
+    # ========================================================
+    # HEADER
+    # ========================================================
+
+    for cell in ws[2]:
 
         cell.fill = dark_blue_fill
 
@@ -488,14 +594,14 @@ def format_report_sheet(
 
         cell.border = border
 
-    ws.row_dimensions[1].height = 35
+    ws.row_dimensions[2].height = 35
 
     # ========================================================
     # DATA ROWS
     # ========================================================
 
     for row in ws.iter_rows(
-        min_row=2,
+        min_row=3,
         max_row=ws.max_row,
         min_col=1,
         max_col=5
@@ -550,14 +656,11 @@ def format_report_sheet(
     # ========================================================
 
     for row in ws.iter_rows(
-        min_row=2,
+        min_row=3,
         max_row=ws.max_row
     ):
 
-        # Count
         row[3].number_format = "0"
-
-        # Demand Qty
         row[4].number_format = "0"
 
     # ========================================================
@@ -575,7 +678,7 @@ def format_report_sheet(
     # ========================================================
 
     for row_number in range(
-        2,
+        3,
         ws.max_row + 1
     ):
 
@@ -587,21 +690,21 @@ def format_report_sheet(
     # FREEZE HEADER
     # ========================================================
 
-    ws.freeze_panes = "A2"
+    ws.freeze_panes = "A3"
 
     # ========================================================
     # AUTO FILTER
     # ========================================================
 
-    if ws.max_row >= 1:
+    if ws.max_row >= 2:
 
         ws.auto_filter.ref = (
-            f"A1:E{ws.max_row}"
+            f"A2:E{ws.max_row}"
         )
 
 
 # ============================================================
-# 6. MAIN FUNCTION
+# 7. MAIN FUNCTION
 # ============================================================
 
 def generate_store_pick_report(
@@ -611,6 +714,8 @@ def generate_store_pick_report(
 
     # ========================================================
     # READ ALL SHEETS
+    #
+    # sheet_name=None returns all worksheets as a dictionary.
     # ========================================================
 
     all_sheets = pd.read_excel(
@@ -677,9 +782,6 @@ def generate_store_pick_report(
 
         # ----------------------------------------------------
         # SAVE STORE DATA
-        # EVEN IF EMPTY
-        #
-        # This allows us to know which sheets were processed.
         # ----------------------------------------------------
 
         store_filtered_data[
@@ -701,7 +803,8 @@ def generate_store_pick_report(
                 filtered_df[
                     filtered_df[
                         "Operation Type"
-                    ].str.lower() == "pick"
+                    ].str.lower()
+                    == "pick"
                 ]
                 .shape[0]
             )
@@ -774,13 +877,18 @@ def generate_store_pick_report(
     )
 
     # ========================================================
+    # COMBINED REPORT TITLE
+    #
+    # Uses latest Source Document Date from ALL
+    # filtered stores.
+    # ========================================================
+
+    combined_title = create_report_title(
+        combined_filtered_data
+    )
+
+    # ========================================================
     # WRITE EXCEL
-    #
-    # FIRST:
-    # Store Wise Report
-    #
-    # THEN:
-    # Every individual store
     # ========================================================
 
     with pd.ExcelWriter(
@@ -790,12 +898,16 @@ def generate_store_pick_report(
 
         # ====================================================
         # FULL COMBINED REPORT
+        #
+        # Row 1 = title
+        # Row 2 = headers
         # ====================================================
 
         combined_display.to_excel(
             writer,
             sheet_name="Store Wise Report",
-            index=False
+            index=False,
+            startrow=1
         )
 
         # ====================================================
@@ -809,7 +921,7 @@ def generate_store_pick_report(
         for store, store_df in valid_store_data.items():
 
             # -----------------------------------------------
-            # Create this store's report
+            # CREATE STORE REPORT
             # -----------------------------------------------
 
             individual_report = create_store_report(
@@ -823,7 +935,17 @@ def generate_store_pick_report(
             )
 
             # -----------------------------------------------
-            # Clean Excel sheet name
+            # STORE TITLE
+            #
+            # Uses Source Document Date from that store.
+            # -----------------------------------------------
+
+            store_title = create_report_title(
+                store_df
+            )
+
+            # -----------------------------------------------
+            # CLEAN EXCEL SHEET NAME
             # -----------------------------------------------
 
             base_name = clean_sheet_name(
@@ -852,13 +974,14 @@ def generate_store_pick_report(
             )
 
             # -----------------------------------------------
-            # Write individual store
+            # WRITE STORE REPORT
             # -----------------------------------------------
 
             individual_display.to_excel(
                 writer,
                 sheet_name=sheet_name,
-                index=False
+                index=False,
+                startrow=1
             )
 
     # ========================================================
@@ -870,18 +993,96 @@ def generate_store_pick_report(
     )
 
     # ========================================================
-    # FORMAT EVERY SHEET
+    # FORMAT COMBINED SHEET
     # ========================================================
 
-    for ws in wb.worksheets:
+    ws = wb["Store Wise Report"]
 
-        format_report_sheet(
-            ws,
-            is_combined=(
-                ws.title
-                == "Store Wise Report"
-            )
+    format_report_sheet(
+        ws,
+        combined_title
+    )
+
+    # ========================================================
+    # FORMAT EACH STORE SHEET
+    # ========================================================
+
+    for store, store_df in valid_store_data.items():
+
+        # Find matching worksheet safely
+        possible_name = clean_sheet_name(
+            store
         )
+
+        matching_ws = None
+
+        for ws in wb.worksheets:
+
+            if (
+                ws.title != "Store Wise Report"
+                and
+                ws.title == possible_name
+            ):
+                matching_ws = ws
+                break
+
+        # If duplicate/suffixed sheet name was used,
+        # find by position/content instead.
+        if matching_ws is None:
+
+            for ws in wb.worksheets:
+
+                if ws.title == "Store Wise Report":
+                    continue
+
+                if (
+                    ws.max_row >= 2
+                    and
+                    ws["A2"].value == "STORE"
+                ):
+
+                    # Check whether this sheet contains
+                    # the current store name.
+                    found_store = False
+
+                    for row in range(
+                        3,
+                        min(ws.max_row, 20) + 1
+                    ):
+
+                        value = ws.cell(
+                            row=row,
+                            column=1
+                        ).value
+
+                        if (
+                            value
+                            and
+                            (
+                                str(value) == store
+                                or
+                                str(value) == f"{store} Total"
+                            )
+                        ):
+
+                            found_store = True
+                            break
+
+                    if found_store:
+
+                        matching_ws = ws
+                        break
+
+        if matching_ws is not None:
+
+            store_title = create_report_title(
+                store_df
+            )
+
+            format_report_sheet(
+                matching_ws,
+                store_title
+            )
 
     # ========================================================
     # SAVE FINAL FILE
@@ -937,6 +1138,22 @@ def generate_store_pick_report(
 
     print(
         " - Operation = Internal Transfers"
+    )
+
+    print(
+        "\nHeading date:"
+    )
+
+    print(
+        " - Source Document Date"
+    )
+
+    print(
+        "\nExample heading:"
+    )
+
+    print(
+        " - STORE WISE PICK COUNT SEPTEMBER - 29"
     )
 
     print(
