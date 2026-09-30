@@ -31,24 +31,23 @@ def split_date_into_columns(file_path, output_file):
     print("Columns found:", df.columns.tolist())
 
     # ==========================================================
-    # 2. STORE MAPPING
+    # 2. STORE NAMES
     # ==========================================================
 
-    store_mapping = {
-        'Al Quoz(SPM)': 'Al Quoz',
-        'Abu_Dhabi_SPM': 'Abu_Dhabi_UAE',
-        'Ras Al Khor(SPM)': 'Dubai'
-    }
+    # Keep the STORE names exactly as they appear
+    # in the source Excel file.
+    #
+    # No store mapping/merging is applied.
+    # Example:
+    # Abu_Dhabi_SPM stays Abu_Dhabi_SPM
+    # Abu_Dhabi_UAE stays Abu_Dhabi_UAE
+    # Al Quoz(SPM) stays Al Quoz(SPM)
+    # Ras Al Khor(SPM) stays Ras Al Khor(SPM)
 
     # Remove Export
     df = df[
         df["STORE"] != "Export(SPM)"
     ].copy()
-
-    # Store mapping
-    df["STORE"] = df["STORE"].replace(
-        store_mapping
-    )
 
     # ==========================================================
     # 3. CONVERT DATE
