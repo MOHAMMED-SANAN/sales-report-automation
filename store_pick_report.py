@@ -1,15 +1,5 @@
 # ============================================================
 # STORE WISE PICK / INTERNAL TRANSFER REPORT
-#
-# OUTPUT:
-#
-# 1. MASTER DATA
-#       -> ALL STORES IN ONE SUMMARY TABLE
-#
-# 2. INDIVIDUAL STORE SHEETS
-#       -> ONE SHEET PER STORE
-#
-# DISTINCT COUNT = SOURCE DOCUMENT
 # ============================================================
 
 import pandas as pd
@@ -317,7 +307,7 @@ def generate_store_pick_report(file_path, output_file):
     # ========================================================
     # 13. CONVERT LAST UPDATED DATE
     #
-    # ONLY USED FOR REPORT TITLE
+    # ONLY USED FOR TITLE
     # ========================================================
 
     master_raw_data["Last Updated Date"] = pd.to_datetime(
@@ -667,7 +657,7 @@ def generate_store_pick_report(file_path, output_file):
 
 
                 # ------------------------------------------------
-                # ADD ROW
+                # ADD DATA ROW
                 # ------------------------------------------------
 
                 final_rows.append({
@@ -755,7 +745,7 @@ def generate_store_pick_report(file_path, output_file):
 
 
         # ====================================================
-        # RETURN DATAFRAME
+        # RETURN
         # ====================================================
 
         return pd.DataFrame(
@@ -766,7 +756,7 @@ def generate_store_pick_report(file_path, output_file):
     # ========================================================
     # 19. CREATE MASTER REPORT
     #
-    # ALL STORES IN ONE SUMMARY TABLE
+    # ALL STORES IN ONE TABLE
     # ========================================================
 
     master_report_list = []
@@ -845,6 +835,8 @@ def generate_store_pick_report(file_path, output_file):
 
     # ========================================================
     # 22. GRAND TOTAL
+    #
+    # DISTINCT COUNT = SOURCE DOCUMENT
     # ========================================================
 
     grand_distinct_count = (
@@ -1044,7 +1036,7 @@ def generate_store_pick_report(file_path, output_file):
 
 
     # ========================================================
-    # 27. PROFESSIONAL COLORS
+    # 27. COLORS
     # ========================================================
 
     dark_blue_fill = PatternFill(
@@ -1066,7 +1058,7 @@ def generate_store_pick_report(file_path, output_file):
 
 
     # ========================================================
-    # 28. PROFESSIONAL FONTS
+    # 28. FONTS
     # ========================================================
 
     title_font = Font(
@@ -1091,14 +1083,9 @@ def generate_store_pick_report(file_path, output_file):
     )
 
 
+    # ALL DATA VALUES BOLD
+
     normal_font = Font(
-
-        size=10
-
-    )
-
-
-    total_font = Font(
 
         bold=True,
 
@@ -1107,15 +1094,26 @@ def generate_store_pick_report(file_path, output_file):
     )
 
 
+    # TOTAL VALUES BOLD
+
+    total_font = Font(
+
+        bold=True,
+
+        size=11
+
+    )
+
+
     # ========================================================
-    # 29. PROFESSIONAL BORDERS
+    # 29. BLACK BORDERS
     # ========================================================
 
     thin_side = Side(
 
         style="thin",
 
-        color="B7B7B7"
+        color="000000"
 
     )
 
@@ -1124,7 +1122,7 @@ def generate_store_pick_report(file_path, output_file):
 
         style="medium",
 
-        color="808080"
+        color="000000"
 
     )
 
@@ -1157,8 +1155,6 @@ def generate_store_pick_report(file_path, output_file):
 
     # ========================================================
     # 30. TABLE WIDTH
-    #
-    # INCREASED SLIGHTLY FOR PROFESSIONAL LOOK
     # ========================================================
 
     def set_professional_widths(ws):
@@ -1213,7 +1209,8 @@ def generate_store_pick_report(file_path, output_file):
         ws["A1"].border = total_border
 
 
-        # TITLE HEIGHT
+        # Bigger title row
+
         ws.row_dimensions[1].height = 32
 
 
@@ -1240,10 +1237,13 @@ def generate_store_pick_report(file_path, output_file):
             )
 
 
+            # BLACK HEADER BORDER
+
             cell.border = normal_border
 
 
-        # HEADER HEIGHT
+        # Bigger header
+
         ws.row_dimensions[2].height = 34
 
 
@@ -1293,11 +1293,20 @@ def generate_store_pick_report(file_path, output_file):
 
                 for cell in row:
 
+                    # Yellow total
+
                     cell.fill = yellow_fill
+
+
+                    # Bold total
 
                     cell.font = total_font
 
+
+                    # BLACK BORDER
+
                     cell.border = total_border
+
 
                     cell.alignment = Alignment(
 
@@ -1310,7 +1319,8 @@ def generate_store_pick_report(file_path, output_file):
                     )
 
 
-                # TOTAL ROW HEIGHT
+                # Total row height
+
                 ws.row_dimensions[
                     row[0].row
                 ].height = 26
@@ -1324,9 +1334,15 @@ def generate_store_pick_report(file_path, output_file):
 
                 for cell in row:
 
+                    # ALL VALUES BOLD
+
                     cell.font = normal_font
 
+
+                    # BLACK BORDER
+
                     cell.border = normal_border
+
 
                     cell.alignment = Alignment(
 
@@ -1339,7 +1355,8 @@ def generate_store_pick_report(file_path, output_file):
                     )
 
 
-                # NORMAL ROW HEIGHT
+                # Normal row height
+
                 ws.row_dimensions[
                     row[0].row
                 ].height = 24
@@ -1357,16 +1374,18 @@ def generate_store_pick_report(file_path, output_file):
 
         ):
 
-            # DISTINCT COUNT
+            # Distinct Count
+
             row[3].number_format = "#,##0"
 
 
-            # DEMAND QTY
+            # Demand Qty
+
             row[4].number_format = "#,##0"
 
 
         # ====================================================
-        # COLUMN WIDTHS
+        # COLUMN WIDTH
         # ====================================================
 
         set_professional_widths(
@@ -1375,7 +1394,7 @@ def generate_store_pick_report(file_path, output_file):
 
 
         # ====================================================
-        # FREEZE
+        # FREEZE PANES
         # ====================================================
 
         ws.freeze_panes = "A3"
@@ -1386,20 +1405,22 @@ def generate_store_pick_report(file_path, output_file):
         # ====================================================
 
         ws.auto_filter.ref = (
+
             f"A2:E{ws.max_row}"
+
         )
 
 
         # ====================================================
-        # IMPORTANT:
+        # IMPORTANT
         #
-        # DO NOT REMOVE EXCEL GRIDLINES
+        # DO NOT REMOVE GRIDLINES
         #
-        # THERE IS NO:
+        # We intentionally DO NOT use:
         #
         # ws.sheet_view.showGridLines = False
         #
-        # SO NORMAL EXCEL GRIDLINES REMAIN VISIBLE.
+        # Therefore Excel's normal gridlines remain visible.
         # ====================================================
 
 
@@ -1552,12 +1573,17 @@ def generate_store_pick_report(file_path, output_file):
 
 
     print(
-        "Table width/height increased"
+        "All values = BOLD"
     )
 
 
     print(
-        "Excel gridlines preserved"
+        "Table borders = BLACK"
+    )
+
+
+    print(
+        "Excel gridlines = PRESERVED"
     )
 
 
