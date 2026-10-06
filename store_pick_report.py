@@ -236,13 +236,26 @@ def generate_store_pick_report(file_path, output_file):
 
     # ============================================================
     # 13. CLEAN LAST UPDATED DATE
+    #
+    # IMPORTANT:
+    # IGNORE TIME
+    #
+    # Example:
+    #
+    # 2026-10-05 10:30:15
+    # 2026-10-05 12:45:20
+    #
+    # BOTH BECOME:
+    #
+    # 2026-10-05
+    #
     # ============================================================
 
     combined_data["Last Updated Date"] = pd.to_datetime(
         combined_data["Last Updated Date"],
         errors="coerce",
         dayfirst=True
-    )
+    ).dt.normalize()
 
 
     # ============================================================
@@ -288,8 +301,7 @@ def generate_store_pick_report(file_path, output_file):
     # ============================================================
     # 16. CREATE PIVOT DATA
     #
-    # LAST UPDATED DATE IS NOW USED INSTEAD OF
-    # SOURCE DOCUMENT
+    # DISTINCT COUNT OF LAST UPDATED DATE
     # ============================================================
 
     pivot_data = (
@@ -558,8 +570,7 @@ def generate_store_pick_report(file_path, output_file):
 
         dates = pd.to_datetime(
             combined_data["Last Updated Date"],
-            errors="coerce",
-            dayfirst=True
+            errors="coerce"
         )
 
         if dates.notna().any():
@@ -915,7 +926,7 @@ def generate_store_pick_report(file_path, output_file):
         max_row=ws.max_row
     ):
 
-        # Distinct Count of Last Updated Date
+        # Distinct Count
         row[3].number_format = "0"
 
         # Demand Qty
@@ -1016,6 +1027,10 @@ def generate_store_pick_report(file_path, output_file):
 
     print(
         "Store totals and Grand Total are included."
+    )
+
+    print(
+        "Last Updated Date is counted by DATE only; time is ignored."
     )
 
     print("==============================================")
