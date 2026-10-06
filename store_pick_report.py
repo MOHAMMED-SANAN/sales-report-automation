@@ -4,7 +4,7 @@
 # OUTPUT:
 #
 # 1. MASTER DATA
-#       -> ALL STORES IN ONE SUMMARY REPORT
+#       -> ALL STORES IN ONE SUMMARY TABLE
 #
 # 2. INDIVIDUAL STORE SHEETS
 #       -> ONE SHEET PER STORE
@@ -124,7 +124,7 @@ def generate_store_pick_report(file_path, output_file):
 
 
         # ----------------------------------------------------
-        # ADD TO MASTER LIST
+        # ADD TO LIST
         # ----------------------------------------------------
 
         all_data.append(
@@ -466,7 +466,7 @@ def generate_store_pick_report(file_path, output_file):
     def create_store_report(store_name):
 
         # ----------------------------------------------------
-        # GET ONLY CURRENT STORE
+        # GET CURRENT STORE
         # ----------------------------------------------------
 
         store_data = filtered_data[
@@ -479,7 +479,7 @@ def generate_store_pick_report(file_path, output_file):
 
 
         # ----------------------------------------------------
-        # IF EMPTY
+        # EMPTY STORE
         # ----------------------------------------------------
 
         if store_data.empty:
@@ -620,7 +620,7 @@ def generate_store_pick_report(file_path, output_file):
 
 
         # ----------------------------------------------------
-        # GROUP BY PERSON
+        # GROUP BY LAST UPDATED BY
         # ----------------------------------------------------
 
         for person, person_df in grouped.groupby(
@@ -636,9 +636,8 @@ def generate_store_pick_report(file_path, output_file):
 
             for _, row in person_df.iterrows():
 
-
                 # ------------------------------------------------
-                # STORE ONLY ON FIRST ROW
+                # STORE ONLY FIRST ROW
                 # ------------------------------------------------
 
                 if first_store_row:
@@ -653,7 +652,7 @@ def generate_store_pick_report(file_path, output_file):
 
 
                 # ------------------------------------------------
-                # PERSON ONLY ON FIRST ROW
+                # PERSON ONLY FIRST ROW
                 # ------------------------------------------------
 
                 if first_person_row:
@@ -668,7 +667,7 @@ def generate_store_pick_report(file_path, output_file):
 
 
                 # ------------------------------------------------
-                # ADD DATA ROW
+                # ADD ROW
                 # ------------------------------------------------
 
                 final_rows.append({
@@ -702,8 +701,6 @@ def generate_store_pick_report(file_path, output_file):
 
         # ====================================================
         # STORE TOTAL
-        #
-        # DISTINCT COUNT = SOURCE DOCUMENT
         # ====================================================
 
         store_distinct_count = (
@@ -758,7 +755,7 @@ def generate_store_pick_report(file_path, output_file):
 
 
         # ====================================================
-        # RETURN
+        # RETURN DATAFRAME
         # ====================================================
 
         return pd.DataFrame(
@@ -769,7 +766,7 @@ def generate_store_pick_report(file_path, output_file):
     # ========================================================
     # 19. CREATE MASTER REPORT
     #
-    # ALL STORES IN ONE TABLE
+    # ALL STORES IN ONE SUMMARY TABLE
     # ========================================================
 
     master_report_list = []
@@ -848,8 +845,6 @@ def generate_store_pick_report(file_path, output_file):
 
     # ========================================================
     # 22. GRAND TOTAL
-    #
-    # DISTINCT COUNT = SOURCE DOCUMENT
     # ========================================================
 
     grand_distinct_count = (
@@ -918,9 +913,7 @@ def generate_store_pick_report(file_path, output_file):
     # ========================================================
 
     title_text = (
-
         "STORE WISE PICK COUNT"
-
     )
 
 
@@ -967,11 +960,8 @@ def generate_store_pick_report(file_path, output_file):
 
     ) as writer:
 
-
         # ====================================================
         # MASTER DATA
-        #
-        # COMPLETE SUMMARY
         # ====================================================
 
         master_report_display.to_excel(
@@ -993,7 +983,6 @@ def generate_store_pick_report(file_path, output_file):
 
         for store_name in store_list:
 
-
             store_report = create_store_report(
 
                 store_name
@@ -1002,7 +991,7 @@ def generate_store_pick_report(file_path, output_file):
 
 
             # ------------------------------------------------
-            # REMOVE HELPER COLUMN
+            # REMOVE ROW TYPE
             # ------------------------------------------------
 
             store_report = store_report.drop(
@@ -1050,9 +1039,7 @@ def generate_store_pick_report(file_path, output_file):
     # ========================================================
 
     wb = load_workbook(
-
         output_file
-
     )
 
 
@@ -1169,7 +1156,9 @@ def generate_store_pick_report(file_path, output_file):
 
 
     # ========================================================
-    # 30. PROFESSIONAL COLUMN WIDTHS
+    # 30. TABLE WIDTH
+    #
+    # INCREASED SLIGHTLY FOR PROFESSIONAL LOOK
     # ========================================================
 
     def set_professional_widths(ws):
@@ -1186,7 +1175,7 @@ def generate_store_pick_report(file_path, output_file):
 
 
     # ========================================================
-    # 31. PROFESSIONAL SHEET FORMAT FUNCTION
+    # 31. FORMAT REPORT SHEET
     # ========================================================
 
     def format_report_sheet(
@@ -1224,6 +1213,7 @@ def generate_store_pick_report(file_path, output_file):
         ws["A1"].border = total_border
 
 
+        # TITLE HEIGHT
         ws.row_dimensions[1].height = 32
 
 
@@ -1253,6 +1243,7 @@ def generate_store_pick_report(file_path, output_file):
             cell.border = normal_border
 
 
+        # HEADER HEIGHT
         ws.row_dimensions[2].height = 34
 
 
@@ -1319,6 +1310,7 @@ def generate_store_pick_report(file_path, output_file):
                     )
 
 
+                # TOTAL ROW HEIGHT
                 ws.row_dimensions[
                     row[0].row
                 ].height = 26
@@ -1347,6 +1339,7 @@ def generate_store_pick_report(file_path, output_file):
                     )
 
 
+                # NORMAL ROW HEIGHT
                 ws.row_dimensions[
                     row[0].row
                 ].height = 24
@@ -1364,17 +1357,11 @@ def generate_store_pick_report(file_path, output_file):
 
         ):
 
-            # -----------------------------------------------
             # DISTINCT COUNT
-            # -----------------------------------------------
-
             row[3].number_format = "#,##0"
 
 
-            # -----------------------------------------------
             # DEMAND QTY
-            # -----------------------------------------------
-
             row[4].number_format = "#,##0"
 
 
@@ -1388,7 +1375,7 @@ def generate_store_pick_report(file_path, output_file):
 
 
         # ====================================================
-        # FREEZE HEADER
+        # FREEZE
         # ====================================================
 
         ws.freeze_panes = "A3"
@@ -1399,17 +1386,21 @@ def generate_store_pick_report(file_path, output_file):
         # ====================================================
 
         ws.auto_filter.ref = (
-
             f"A2:E{ws.max_row}"
-
         )
 
 
         # ====================================================
-        # REMOVE GRIDLINES
+        # IMPORTANT:
+        #
+        # DO NOT REMOVE EXCEL GRIDLINES
+        #
+        # THERE IS NO:
+        #
+        # ws.sheet_view.showGridLines = False
+        #
+        # SO NORMAL EXCEL GRIDLINES REMAIN VISIBLE.
         # ====================================================
-
-        ws.sheet_view.showGridLines = False
 
 
         # ====================================================
@@ -1561,7 +1552,12 @@ def generate_store_pick_report(file_path, output_file):
 
 
     print(
-        "Professional width / height applied"
+        "Table width/height increased"
+    )
+
+
+    print(
+        "Excel gridlines preserved"
     )
 
 
