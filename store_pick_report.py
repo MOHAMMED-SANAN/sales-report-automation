@@ -534,7 +534,7 @@ def generate_store_pick_report(file_path, output_file):
     if "Source Document Date" in combined_data.columns:
 
         dates = pd.to_datetime(
-            combined_data["Source Document Date"],
+            combined_data["Last Updated Date"],
             errors="coerce",
             dayfirst=True
         )
