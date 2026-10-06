@@ -44,6 +44,7 @@ def generate_store_pick_report(file_path, output_file):
     print("\nAll sheets found:")
 
     for sheet_name in all_sheets.keys():
+
         print(" -", sheet_name)
 
 
@@ -53,6 +54,7 @@ def generate_store_pick_report(file_path, output_file):
 
     all_data = []
 
+
     for sheet_name, df in all_sheets.items():
 
         # --------------------------------------------------------
@@ -61,15 +63,20 @@ def generate_store_pick_report(file_path, output_file):
 
         if sheet_name in EXCLUDED_SHEETS:
 
-            print(f"SKIPPED: {sheet_name}")
+            print(
+                f"SKIPPED: {sheet_name}"
+            )
 
             continue
 
-        print(f"Processing: {sheet_name}")
+
+        print(
+            f"Processing: {sheet_name}"
+        )
 
 
         # --------------------------------------------------------
-        # Remove completely empty rows
+        # REMOVE COMPLETELY EMPTY ROWS
         # --------------------------------------------------------
 
         df = df.dropna(
@@ -78,7 +85,7 @@ def generate_store_pick_report(file_path, output_file):
 
 
         # --------------------------------------------------------
-        # Remove completely empty columns
+        # REMOVE COMPLETELY EMPTY COLUMNS
         # --------------------------------------------------------
 
         df = df.dropna(
@@ -88,7 +95,7 @@ def generate_store_pick_report(file_path, output_file):
 
 
         # --------------------------------------------------------
-        # Clean column names
+        # CLEAN COLUMN NAMES
         # --------------------------------------------------------
 
         df.columns = (
@@ -112,10 +119,12 @@ def generate_store_pick_report(file_path, output_file):
 
 
         # --------------------------------------------------------
-        # Add dataframe to list
+        # ADD DATAFRAME TO LIST
         # --------------------------------------------------------
 
-        all_data.append(df)
+        all_data.append(
+            df
+        )
 
 
     # ============================================================
@@ -158,29 +167,41 @@ def generate_store_pick_report(file_path, output_file):
     print("COMBINED DATA")
     print("==============================================")
 
-    print("Rows:", len(combined_data))
-    print("Columns:", len(combined_data.columns))
+    print(
+        "Rows:",
+        len(combined_data)
+    )
+
+    print(
+        "Columns:",
+        len(combined_data.columns)
+    )
+
 
     print("\nColumns:")
 
+
     for col in combined_data.columns:
-        print(" -", col)
+
+        print(
+            " -",
+            col
+        )
 
 
     # ============================================================
     # 9. CHECK REQUIRED COLUMNS
     #
-    # IMPORTANT:
+    # SOURCE DOCUMENT IS REQUIRED
     #
-    # Source Document is NOT required anymore.
-    #
-    # Last Updated Date is used for the count.
-    #
-    # Last Updated By is STILL REQUIRED.
+    # SOURCE DOCUMENT = DISTINCT COUNT
+    # LAST UPDATED BY = PERSON
+    # LAST UPDATED DATE = TITLE DATE ONLY
     # ============================================================
 
     required_columns = [
         "STORE",
+        "Source Document",
         "Last Updated Date",
         "Operation Type",
         "Demand Qty",
@@ -200,14 +221,24 @@ def generate_store_pick_report(file_path, output_file):
 
         print("\nERROR - Missing columns:")
 
+
         for col in missing_columns:
-            print(" -", col)
+
+            print(
+                " -",
+                col
+            )
 
 
         print("\nActual columns found:")
 
+
         for col in combined_data.columns:
-            print(" -", col)
+
+            print(
+                " -",
+                col
+            )
 
 
         raise ValueError(
@@ -242,7 +273,7 @@ def generate_store_pick_report(file_path, output_file):
     # ============================================================
     # 12. CLEAN LAST UPDATED BY
     #
-    # THIS COLUMN REMAINS IN THE REPORT
+    # THIS COLUMN STAYS IN THE REPORT
     # ============================================================
 
     combined_data["Last Updated By"] = (
@@ -254,7 +285,21 @@ def generate_store_pick_report(file_path, output_file):
 
 
     # ============================================================
-    # 13. CONVERT DEMAND QTY TO NUMBER
+    # 13. CLEAN SOURCE DOCUMENT
+    #
+    # SOURCE DOCUMENT WILL BE USED FOR DISTINCT COUNT
+    # ============================================================
+
+    combined_data["Source Document"] = (
+        combined_data["Source Document"]
+        .fillna("")
+        .astype(str)
+        .str.strip()
+    )
+
+
+    # ============================================================
+    # 14. CONVERT DEMAND QTY TO NUMBER
     # ============================================================
 
     combined_data["Demand Qty"] = pd.to_numeric(
@@ -264,28 +309,21 @@ def generate_store_pick_report(file_path, output_file):
 
 
     # ============================================================
-    # 14. CLEAN LAST UPDATED DATE
+    # 15. CLEAN LAST UPDATED DATE
+    #
+    # USED ONLY FOR REPORT TITLE
     #
     # TIME IS IGNORED
-    #
-    # Example:
-    #
-    # 2026-10-05 10:30:15
-    # 2026-10-05 15:20:30
-    #
-    # Both become:
-    #
-    # 2026-10-05
     # ============================================================
 
     combined_data["Last Updated Date"] = pd.to_datetime(
         combined_data["Last Updated Date"],
         errors="coerce"
-    ).dt.normalize()
+    )
 
 
     # ============================================================
-    # 15. FILTER DATA
+    # 16. FILTER DATA
     #
     # STATE = DONE
     #
@@ -314,18 +352,21 @@ def generate_store_pick_report(file_path, output_file):
 
 
     # ============================================================
-    # 16. SHOW FILTER RESULT
+    # 17. SHOW FILTER RESULT
     # ============================================================
 
     print("\n==============================================")
     print("FILTERED DATA")
     print("==============================================")
 
-    print("Filtered rows:", len(filtered_data))
+    print(
+        "Filtered rows:",
+        len(filtered_data)
+    )
 
 
     # ============================================================
-    # 17. CREATE PIVOT DATA
+    # 18. CREATE PIVOT DATA
     #
     # STORE
     # +
@@ -333,7 +374,9 @@ def generate_store_pick_report(file_path, output_file):
     # +
     # OPERATION TYPE
     #
-    # COUNT = LAST UPDATED DATE
+    # DISTINCT COUNT = SOURCE DOCUMENT
+    #
+    # DEMAND = SUM OF DEMAND QTY
     # ============================================================
 
     pivot_data = (
@@ -348,17 +391,27 @@ def generate_store_pick_report(file_path, output_file):
         )
         .agg(
             **{
-                "Distinct Count of Last Updated Date":
+
+                # -----------------------------------------------
+                # DISTINCT COUNT OF SOURCE DOCUMENT
+                # -----------------------------------------------
+
+                "Distinct Count of Source Document":
                     (
-                        "Last Updated Date",
+                        "Source Document",
                         "nunique"
                     ),
+
+                # -----------------------------------------------
+                # SUM OF DEMAND QTY
+                # -----------------------------------------------
 
                 "Sum of Demand Qty":
                     (
                         "Demand Qty",
                         "sum"
                     )
+
             }
         )
         .reset_index()
@@ -366,15 +419,18 @@ def generate_store_pick_report(file_path, output_file):
 
 
     # ============================================================
-    # 18. SORT PIVOT DATA
+    # 19. SORT PIVOT DATA
     #
     # INTERNAL TRANSFERS FIRST
     # PICK SECOND
     # ============================================================
 
     operation_order = {
+
         "internal transfers": 0,
+
         "pick": 1
+
     }
 
 
@@ -387,12 +443,14 @@ def generate_store_pick_report(file_path, output_file):
 
 
     pivot_data = pivot_data.sort_values(
+
         by=[
             "STORE",
             "Last Updated By",
             "_operation_order",
             "Operation Type"
         ],
+
         na_position="last"
     )
 
@@ -405,18 +463,19 @@ def generate_store_pick_report(file_path, output_file):
 
 
     # ============================================================
-    # 19. CREATE FINAL REPORT
+    # 20. CREATE FINAL REPORT
     #
     # STORE APPEARS ONLY ON FIRST ROW
     #
     # LAST UPDATED BY APPEARS ONLY ON FIRST ROW
     #
-    # Example:
+    # EXAMPLE:
     #
-    # Sharjah_UAE | JIBIN       | Internal Transfers | 27 | 57
-    #             |             | Pick               | 157| 322
-    #             | KANJAN B.K  | Internal Transfers | 1413|6102
-    #             |             | Pick               | 1463|10685
+    # Sharjah_UAE | JIBIN | Internal Transfers | 27   | 57
+    #             |       | Pick               | 157  | 322
+    #
+    #             | KANJAN B.K | Internal Transfers | 1413 | 6102
+    #             |            | Pick               | 1463 | 10685
     #
     # ============================================================
 
@@ -451,7 +510,7 @@ def generate_store_pick_report(file_path, output_file):
 
 
                 # ------------------------------------------------
-                # STORE
+                # STORE APPEARS ONLY ON FIRST ROW
                 # ------------------------------------------------
 
                 if first_store_row:
@@ -466,7 +525,7 @@ def generate_store_pick_report(file_path, output_file):
 
 
                 # ------------------------------------------------
-                # LAST UPDATED BY
+                # PERSON APPEARS ONLY ON FIRST ROW
                 # ------------------------------------------------
 
                 if first_person_row:
@@ -481,7 +540,7 @@ def generate_store_pick_report(file_path, output_file):
 
 
                 # ------------------------------------------------
-                # ADD ROW
+                # ADD DATA ROW
                 # ------------------------------------------------
 
                 final_report.append({
@@ -493,11 +552,13 @@ def generate_store_pick_report(file_path, output_file):
                         display_person,
 
                     "Operation Type":
-                        row["Operation Type"],
-
-                    "Distinct Count of Last Updated Date":
                         row[
-                            "Distinct Count of Last Updated Date"
+                            "Operation Type"
+                        ],
+
+                    "Distinct Count of Source Document":
+                        row[
+                            "Distinct Count of Source Document"
                         ],
 
                     "Sum of Demand Qty":
@@ -518,7 +579,7 @@ def generate_store_pick_report(file_path, output_file):
         store_source_count = (
             filtered_data[
                 filtered_data["STORE"] == store
-            ]["Last Updated Date"]
+            ]["Source Document"]
             .nunique()
         )
 
@@ -542,7 +603,7 @@ def generate_store_pick_report(file_path, output_file):
             "Operation Type":
                 "",
 
-            "Distinct Count of Last Updated Date":
+            "Distinct Count of Source Document":
                 store_source_count,
 
             "Sum of Demand Qty":
@@ -555,7 +616,7 @@ def generate_store_pick_report(file_path, output_file):
 
 
     # ============================================================
-    # 20. CONVERT FINAL REPORT TO DATAFRAME
+    # 21. CONVERT FINAL REPORT TO DATAFRAME
     # ============================================================
 
     final_report = pd.DataFrame(
@@ -564,12 +625,14 @@ def generate_store_pick_report(file_path, output_file):
 
 
     # ============================================================
-    # 21. GRAND TOTAL
+    # 22. GRAND TOTAL
+    #
+    # DISTINCT COUNT = SOURCE DOCUMENT
     # ============================================================
 
     grand_source_count = (
         filtered_data[
-            "Last Updated Date"
+            "Source Document"
         ].nunique()
     )
 
@@ -592,7 +655,7 @@ def generate_store_pick_report(file_path, output_file):
         "Operation Type":
             "",
 
-        "Distinct Count of Last Updated Date":
+        "Distinct Count of Source Document":
             grand_source_count,
 
         "Sum of Demand Qty":
@@ -614,7 +677,7 @@ def generate_store_pick_report(file_path, output_file):
 
 
     # ============================================================
-    # 22. REMOVE ROW_TYPE FROM DISPLAY
+    # 23. REMOVE ROW_TYPE FROM DISPLAY
     # ============================================================
 
     report_display = final_report.drop(
@@ -625,7 +688,9 @@ def generate_store_pick_report(file_path, output_file):
 
 
     # ============================================================
-    # 23. CREATE DYNAMIC TITLE
+    # 24. CREATE DYNAMIC TITLE
+    #
+    # LAST UPDATED DATE IS USED ONLY FOR TITLE
     # ============================================================
 
     title_text = (
@@ -659,11 +724,14 @@ def generate_store_pick_report(file_path, output_file):
     print("REPORT TITLE")
     print("==============================================")
 
-    print(title_text)
+
+    print(
+        title_text
+    )
 
 
     # ============================================================
-    # 24. WRITE EXCEL
+    # 25. WRITE EXCEL
     #
     # ROW 1 = TITLE
     # ROW 2 = HEADER
@@ -711,7 +779,7 @@ def generate_store_pick_report(file_path, output_file):
 
 
     # ============================================================
-    # 25. OPEN WORKBOOK
+    # 26. OPEN WORKBOOK
     # ============================================================
 
     wb = load_workbook(
@@ -720,7 +788,7 @@ def generate_store_pick_report(file_path, output_file):
 
 
     # ============================================================
-    # 26. COLORS
+    # 27. COLORS
     # ============================================================
 
     yellow_fill = PatternFill(
@@ -742,7 +810,7 @@ def generate_store_pick_report(file_path, output_file):
 
 
     # ============================================================
-    # 27. FONTS
+    # 28. FONTS
     # ============================================================
 
     white_font = Font(
@@ -764,7 +832,7 @@ def generate_store_pick_report(file_path, output_file):
 
 
     # ============================================================
-    # 28. BORDER
+    # 29. BORDER
     # ============================================================
 
     thin_side = Side(
@@ -782,7 +850,7 @@ def generate_store_pick_report(file_path, output_file):
 
 
     # ============================================================
-    # 29. FORMAT COMBINED DATA
+    # 30. FORMAT COMBINED DATA
     # ============================================================
 
     ws = wb[
@@ -840,7 +908,7 @@ def generate_store_pick_report(file_path, output_file):
 
 
     # ============================================================
-    # 30. FORMAT FILTERED DATA
+    # 31. FORMAT FILTERED DATA
     # ============================================================
 
     ws = wb[
@@ -894,7 +962,7 @@ def generate_store_pick_report(file_path, output_file):
 
 
     # ============================================================
-    # 31. FORMAT STORE WISE REPORT
+    # 32. FORMAT STORE WISE REPORT
     # ============================================================
 
     ws = wb[
@@ -903,7 +971,7 @@ def generate_store_pick_report(file_path, output_file):
 
 
     # ============================================================
-    # 32. TITLE
+    # 33. TITLE
     # ============================================================
 
     ws.merge_cells(
@@ -932,7 +1000,7 @@ def generate_store_pick_report(file_path, output_file):
 
 
     # ============================================================
-    # 33. HEADER
+    # 34. HEADER
     # ============================================================
 
     for cell in ws[2]:
@@ -956,7 +1024,7 @@ def generate_store_pick_report(file_path, output_file):
 
 
     # ============================================================
-    # 34. DATA ROWS
+    # 35. DATA ROWS
     # ============================================================
 
     for row in ws.iter_rows(
@@ -1018,7 +1086,7 @@ def generate_store_pick_report(file_path, output_file):
 
 
     # ============================================================
-    # 35. NUMBER FORMATTING
+    # 36. NUMBER FORMATTING
     # ============================================================
 
     for row in ws.iter_rows(
@@ -1026,18 +1094,22 @@ def generate_store_pick_report(file_path, output_file):
         max_row=ws.max_row
     ):
 
-        # Distinct Count of Last Updated Date
+        # --------------------------------------------------------
+        # DISTINCT COUNT OF SOURCE DOCUMENT
+        # --------------------------------------------------------
 
         row[3].number_format = "0"
 
 
-        # Demand Qty
+        # --------------------------------------------------------
+        # DEMAND QTY
+        # --------------------------------------------------------
 
         row[4].number_format = "0"
 
 
     # ============================================================
-    # 36. COLUMN WIDTHS
+    # 37. COLUMN WIDTHS
     # ============================================================
 
     ws.column_dimensions[
@@ -1066,7 +1138,7 @@ def generate_store_pick_report(file_path, output_file):
 
 
     # ============================================================
-    # 37. ROW HEIGHT
+    # 38. ROW HEIGHT
     # ============================================================
 
     for row_number in range(
@@ -1080,14 +1152,14 @@ def generate_store_pick_report(file_path, output_file):
 
 
     # ============================================================
-    # 38. FREEZE HEADER
+    # 39. FREEZE HEADER
     # ============================================================
 
     ws.freeze_panes = "A3"
 
 
     # ============================================================
-    # 39. AUTO FILTER
+    # 40. AUTO FILTER
     # ============================================================
 
     ws.auto_filter.ref = (
@@ -1096,7 +1168,7 @@ def generate_store_pick_report(file_path, output_file):
 
 
     # ============================================================
-    # 40. SAVE FILE
+    # 41. SAVE FILE
     # ============================================================
 
     wb.save(
@@ -1105,13 +1177,22 @@ def generate_store_pick_report(file_path, output_file):
 
 
     # ============================================================
-    # 41. SUCCESS MESSAGE
+    # 42. SUCCESS MESSAGE
     # ============================================================
 
     print("\n")
-    print("==============================================")
-    print("       REPORT CREATED SUCCESSFULLY")
-    print("==============================================")
+
+    print(
+        "=============================================="
+    )
+
+    print(
+        "       REPORT CREATED SUCCESSFULLY"
+    )
+
+    print(
+        "=============================================="
+    )
 
 
     print(
@@ -1133,13 +1214,16 @@ def generate_store_pick_report(file_path, output_file):
 
     print("\nReport contains:")
 
+
     print(
         "1. Combined Data"
     )
 
+
     print(
         "2. Filtered Data"
     )
+
 
     print(
         "3. Store Wise Report"
@@ -1152,17 +1236,12 @@ def generate_store_pick_report(file_path, output_file):
 
 
     print(
-        "Source Document is NOT used for the report count."
+        "Distinct Count is calculated from Source Document."
     )
 
 
     print(
-        "Last Updated Date is used for the distinct count."
-    )
-
-
-    print(
-        "Time portion of Last Updated Date is ignored."
+        "Last Updated Date is used only for the report title."
     )
 
 
