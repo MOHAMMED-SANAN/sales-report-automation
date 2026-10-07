@@ -389,10 +389,11 @@ def generate_delivery_report(
 
                     cell.font = Font(
                         size=12,
-                        bold=False
+                        bold=True
                     )
 
                     cell.alignment = Alignment(
+                        horizontal="center",
                         vertical="center"
                     )
 
