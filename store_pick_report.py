@@ -22,8 +22,6 @@ def generate_store_pick_report(file_path, output_file):
 
     # ========================================================
     # 1. READ ALL SHEETS
-    #
-    # HEADER IS ON EXCEL ROW 5
     # ========================================================
 
     all_sheets = pd.read_excel(
@@ -52,10 +50,6 @@ def generate_store_pick_report(file_path, output_file):
 
     for sheet_name, df in all_sheets.items():
 
-        # ----------------------------------------------------
-        # SKIP EXCLUDED SHEETS
-        # ----------------------------------------------------
-
         if sheet_name in EXCLUDED_SHEETS:
 
             print(f"SKIPPED: {sheet_name}")
@@ -66,29 +60,20 @@ def generate_store_pick_report(file_path, output_file):
         print(f"Reading: {sheet_name}")
 
 
-        # ----------------------------------------------------
         # REMOVE COMPLETELY EMPTY ROWS
-        # ----------------------------------------------------
-
         df = df.dropna(
             how="all"
         ).copy()
 
 
-        # ----------------------------------------------------
         # REMOVE COMPLETELY EMPTY COLUMNS
-        # ----------------------------------------------------
-
         df = df.dropna(
             axis=1,
             how="all"
         )
 
 
-        # ----------------------------------------------------
         # CLEAN COLUMN NAMES
-        # ----------------------------------------------------
-
         df.columns = (
             df.columns
             .astype(str)
@@ -96,20 +81,13 @@ def generate_store_pick_report(file_path, output_file):
         )
 
 
-        # ----------------------------------------------------
         # ADD STORE COLUMN
-        # ----------------------------------------------------
-
         df.insert(
             0,
             "STORE",
             sheet_name
         )
 
-
-        # ----------------------------------------------------
-        # ADD TO LIST
-        # ----------------------------------------------------
 
         all_data.append(df)
 
@@ -275,12 +253,6 @@ def generate_store_pick_report(file_path, output_file):
 
     # ========================================================
     # 14. FILTER DATA
-    #
-    # STATE = DONE
-    #
-    # OPERATION TYPE =
-    # PICK
-    # INTERNAL TRANSFERS
     # ========================================================
 
     filtered_data = master_raw_data[
@@ -311,9 +283,6 @@ def generate_store_pick_report(file_path, output_file):
 
     # ========================================================
     # 15. OPERATION ORDER
-    #
-    # INTERNAL TRANSFERS FIRST
-    # PICK SECOND
     # ========================================================
 
     operation_order = {
@@ -336,8 +305,6 @@ def generate_store_pick_report(file_path, output_file):
 
     # ========================================================
     # 16. STORE ORDER
-    #
-    # SAME ORDER AS ORIGINAL EXCEL SHEETS
     # ========================================================
 
     store_list = [
@@ -389,10 +356,6 @@ def generate_store_pick_report(file_path, output_file):
 
     def create_store_report(store_name):
 
-        # ----------------------------------------------------
-        # FILTER STORE
-        # ----------------------------------------------------
-
         store_data = filtered_data[
 
             filtered_data["STORE"]
@@ -400,10 +363,6 @@ def generate_store_pick_report(file_path, output_file):
 
         ].copy()
 
-
-        # ----------------------------------------------------
-        # EMPTY STORE
-        # ----------------------------------------------------
 
         if store_data.empty:
 
@@ -511,7 +470,6 @@ def generate_store_pick_report(file_path, output_file):
         final_rows = []
 
 
-        # Store name only on first row
         first_store_row = True
 
 
@@ -532,10 +490,7 @@ def generate_store_pick_report(file_path, output_file):
 
             for _, row in person_df.iterrows():
 
-                # ------------------------------------------------
-                # STORE NAME
-                # ------------------------------------------------
-
+                # STORE
                 if first_store_row:
 
                     display_store = store_name
@@ -547,10 +502,7 @@ def generate_store_pick_report(file_path, output_file):
                     display_store = ""
 
 
-                # ------------------------------------------------
                 # LAST UPDATED BY
-                # ------------------------------------------------
-
                 if first_person_row:
 
                     display_person = person
@@ -561,10 +513,6 @@ def generate_store_pick_report(file_path, output_file):
 
                     display_person = ""
 
-
-                # ------------------------------------------------
-                # ADD DATA ROW
-                # ------------------------------------------------
 
                 final_rows.append({
 
@@ -637,10 +585,6 @@ def generate_store_pick_report(file_path, output_file):
 
         })
 
-
-        # ====================================================
-        # RETURN
-        # ====================================================
 
         return pd.DataFrame(
             final_rows
@@ -817,9 +761,7 @@ def generate_store_pick_report(file_path, output_file):
 
     ) as writer:
 
-        # ----------------------------------------------------
         # MASTER DATA
-        # ----------------------------------------------------
 
         master_report_display.to_excel(
 
@@ -834,9 +776,7 @@ def generate_store_pick_report(file_path, output_file):
         )
 
 
-        # ----------------------------------------------------
         # STORE SHEETS
-        # ----------------------------------------------------
 
         for store_name in store_list:
 
@@ -860,8 +800,6 @@ def generate_store_pick_report(file_path, output_file):
 
                 continue
 
-
-            # Excel sheet name max = 31 characters
 
             sheet_name = str(
                 store_name
@@ -920,7 +858,7 @@ def generate_store_pick_report(file_path, output_file):
 
         bold=True,
 
-        size=15,
+        size=14,
 
         color="1F4E78"
 
@@ -938,8 +876,6 @@ def generate_store_pick_report(file_path, output_file):
     )
 
 
-    # ALL NORMAL VALUES BOLD
-
     normal_font = Font(
 
         bold=True,
@@ -948,8 +884,6 @@ def generate_store_pick_report(file_path, output_file):
 
     )
 
-
-    # TOTAL VALUES BOLD
 
     total_font = Font(
 
@@ -1010,19 +944,20 @@ def generate_store_pick_report(file_path, output_file):
 
     # ========================================================
     # 30. COLUMN WIDTHS
+    # MATCH SECOND IMAGE
     # ========================================================
 
     def set_professional_widths(ws):
 
-        ws.column_dimensions["A"].width = 30
+        ws.column_dimensions["A"].width = 27
 
-        ws.column_dimensions["B"].width = 34
+        ws.column_dimensions["B"].width = 28
 
-        ws.column_dimensions["C"].width = 26
+        ws.column_dimensions["C"].width = 25
 
-        ws.column_dimensions["D"].width = 45
+        ws.column_dimensions["D"].width = 39
 
-        ws.column_dimensions["E"].width = 28
+        ws.column_dimensions["E"].width = 24
 
 
     # ========================================================
@@ -1030,31 +965,6 @@ def generate_store_pick_report(file_path, output_file):
     # ========================================================
 
     def merge_store_cells(ws):
-
-        """
-        Merge STORE column vertically.
-
-        Example:
-
-        Dubai
-        blank
-        blank
-        blank
-        blank
-
-        becomes one merged cell:
-
-        ┌─────────────┐
-        │             │
-        │    Dubai    │
-        │             │
-        │             │
-        │             │
-        └─────────────┘
-
-        Store Total remains separate.
-        Grand Total remains separate.
-        """
 
         current_row = 3
 
@@ -1070,10 +980,6 @@ def generate_store_pick_report(file_path, output_file):
             ).value
 
 
-            # ------------------------------------------------
-            # EMPTY ROW
-            # ------------------------------------------------
-
             if current_value is None:
 
                 current_row += 1
@@ -1086,10 +992,7 @@ def generate_store_pick_report(file_path, output_file):
             ).strip()
 
 
-            # ------------------------------------------------
-            # DON'T MERGE TOTAL ROW
-            # ------------------------------------------------
-
+            # DON'T MERGE TOTAL
             if (
 
                 current_value.endswith(" Total")
@@ -1105,20 +1008,12 @@ def generate_store_pick_report(file_path, output_file):
                 continue
 
 
-            # ------------------------------------------------
-            # STORE DATA START ROW
-            # ------------------------------------------------
-
             start_row = current_row
-
-
-            # ------------------------------------------------
-            # FIND LAST ROW OF THIS STORE
-            # ------------------------------------------------
 
             end_row = start_row
 
 
+            # FIND END OF STORE
             while end_row + 1 <= ws.max_row:
 
                 next_value = ws.cell(
@@ -1129,10 +1024,6 @@ def generate_store_pick_report(file_path, output_file):
 
                 ).value
 
-
-                # --------------------------------------------
-                # BLANK = SAME STORE
-                # --------------------------------------------
 
                 if next_value is None:
 
@@ -1145,10 +1036,6 @@ def generate_store_pick_report(file_path, output_file):
                     next_value
                 ).strip()
 
-
-                # --------------------------------------------
-                # TOTAL = STOP
-                # --------------------------------------------
 
                 if (
 
@@ -1163,10 +1050,6 @@ def generate_store_pick_report(file_path, output_file):
                     break
 
 
-                # --------------------------------------------
-                # ANOTHER STORE = STOP
-                # --------------------------------------------
-
                 if next_value != current_value:
 
                     break
@@ -1175,10 +1058,7 @@ def generate_store_pick_report(file_path, output_file):
                 end_row += 1
 
 
-            # ------------------------------------------------
-            # MERGE
-            # ------------------------------------------------
-
+            # MERGE STORE
             if end_row > start_row:
 
                 ws.merge_cells(
@@ -1220,9 +1100,195 @@ def generate_store_pick_report(file_path, output_file):
                 merged_cell.border = normal_border
 
 
-            # ------------------------------------------------
-            # MOVE TO NEXT SECTION
-            # ------------------------------------------------
+            current_row = end_row + 1
+
+
+        # ====================================================
+        # MERGE LAST UPDATED BY
+        # ====================================================
+
+        current_row = 3
+
+
+        while current_row <= ws.max_row:
+
+            store_value = ws.cell(
+
+                row=current_row,
+
+                column=1
+
+            ).value
+
+
+            if store_value is not None:
+
+                store_value = str(
+                    store_value
+                ).strip()
+
+
+                if (
+
+                    store_value.endswith(" Total")
+
+                    or
+
+                    store_value == "Grand Total"
+
+                ):
+
+                    current_row += 1
+
+                    continue
+
+
+            person_value = ws.cell(
+
+                row=current_row,
+
+                column=2
+
+            ).value
+
+
+            if (
+
+                person_value is None
+
+                or
+
+                str(person_value).strip() == ""
+
+            ):
+
+                current_row += 1
+
+                continue
+
+
+            person_value = str(
+                person_value
+            ).strip()
+
+
+            start_row = current_row
+
+            end_row = start_row
+
+
+            # FIND SAME PERSON ROWS
+            while end_row + 1 <= ws.max_row:
+
+                next_store = ws.cell(
+
+                    row=end_row + 1,
+
+                    column=1
+
+                ).value
+
+
+                if next_store is not None:
+
+                    next_store_text = str(
+                        next_store
+                    ).strip()
+
+
+                    if (
+
+                        next_store_text.endswith(" Total")
+
+                        or
+
+                        next_store_text == "Grand Total"
+
+                    ):
+
+                        break
+
+
+                next_person = ws.cell(
+
+                    row=end_row + 1,
+
+                    column=2
+
+                ).value
+
+
+                # BLANK PERSON = SAME PERSON
+                if (
+
+                    next_person is None
+
+                    or
+
+                    str(next_person).strip() == ""
+
+                ):
+
+                    end_row += 1
+
+                    continue
+
+
+                next_person = str(
+                    next_person
+                ).strip()
+
+
+                # DIFFERENT PERSON = STOP
+                if next_person != person_value:
+
+                    break
+
+
+                end_row += 1
+
+
+            # MERGE PERSON
+            if end_row > start_row:
+
+                ws.merge_cells(
+
+                    start_row=start_row,
+
+                    start_column=2,
+
+                    end_row=end_row,
+
+                    end_column=2
+
+                )
+
+
+                merged_person_cell = ws.cell(
+
+                    row=start_row,
+
+                    column=2
+
+                )
+
+
+                merged_person_cell.alignment = Alignment(
+
+                    horizontal="center",
+
+                    vertical="center",
+
+                    wrap_text=True
+
+                )
+
+
+                merged_person_cell.font = normal_font
+
+
+                merged_person_cell.border = normal_border
+
 
             current_row = end_row + 1
 
@@ -1266,7 +1332,8 @@ def generate_store_pick_report(file_path, output_file):
         ws["A1"].border = total_border
 
 
-        ws.row_dimensions[1].height = 32
+        # SAME SIZE AS SECOND IMAGE
+        ws.row_dimensions[1].height = 30
 
 
         # ====================================================
@@ -1295,7 +1362,8 @@ def generate_store_pick_report(file_path, output_file):
             cell.border = normal_border
 
 
-        ws.row_dimensions[2].height = 34
+        # SAME SIZE AS SECOND IMAGE
+        ws.row_dimensions[2].height = 32
 
 
         # ====================================================
@@ -1346,12 +1414,9 @@ def generate_store_pick_report(file_path, output_file):
 
                     cell.fill = yellow_fill
 
-
                     cell.font = total_font
 
-
                     cell.border = total_border
-
 
                     cell.alignment = Alignment(
 
@@ -1364,9 +1429,10 @@ def generate_store_pick_report(file_path, output_file):
                     )
 
 
+                # TOTAL ROW HEIGHT
                 ws.row_dimensions[
                     row[0].row
-                ].height = 26
+                ].height = 27
 
 
             # =================================================
@@ -1379,9 +1445,7 @@ def generate_store_pick_report(file_path, output_file):
 
                     cell.font = normal_font
 
-
                     cell.border = normal_border
-
 
                     cell.alignment = Alignment(
 
@@ -1394,9 +1458,10 @@ def generate_store_pick_report(file_path, output_file):
                     )
 
 
+                # DATA ROW HEIGHT
                 ws.row_dimensions[
                     row[0].row
-                ].height = 24
+                ].height = 28
 
 
         # ====================================================
@@ -1447,13 +1512,7 @@ def generate_store_pick_report(file_path, output_file):
         # KEEP GRIDLINES
         # ====================================================
 
-        # IMPORTANT:
-        #
-        # DO NOT USE:
-        #
-        # ws.sheet_view.showGridLines = False
-        #
-        # Therefore Excel gridlines stay visible.
+        # Gridlines intentionally remain visible.
 
 
         # ====================================================
@@ -1462,15 +1521,11 @@ def generate_store_pick_report(file_path, output_file):
 
         ws.sheet_properties.pageSetUpPr.fitToPage = True
 
-
         ws.page_setup.fitToWidth = 1
-
 
         ws.page_setup.fitToHeight = 0
 
-
         ws.page_setup.orientation = "landscape"
-
 
         ws.page_margins.left = 0.25
 
@@ -1482,7 +1537,7 @@ def generate_store_pick_report(file_path, output_file):
 
 
         # ====================================================
-        # MERGE STORE COLUMN
+        # MERGE STORE + LAST UPDATED BY
         # ====================================================
 
         merge_store_cells(
@@ -1596,6 +1651,10 @@ def generate_store_pick_report(file_path, output_file):
     )
 
     print(
+        "✓ Last Updated By vertically merged"
+    )
+
+    print(
         "✓ Store Total kept separate"
     )
 
@@ -1609,10 +1668,6 @@ def generate_store_pick_report(file_path, output_file):
 
     print(
         "✓ Demand Qty summed"
-    )
-
-    print(
-        "✓ Last Updated By included"
     )
 
     print(
@@ -1640,7 +1695,7 @@ def generate_store_pick_report(file_path, output_file):
     )
 
     print(
-        "✓ Professional column widths"
+        "✓ Table size matched to reference"
     )
 
     print(
