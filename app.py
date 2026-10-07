@@ -29,6 +29,15 @@ from store_pick_report import (
     generate_store_pick_report
 )
 
+# NEW DELIVERY REPORT
+from delivery_report import (
+    generate_delivery_report
+)
+
+
+# ==============================================================
+# PAGE CONFIG
+# ==============================================================
 
 st.set_page_config(
     page_title="Sales Report Automation",
@@ -36,6 +45,10 @@ st.set_page_config(
     layout="wide"
 )
 
+
+# ==============================================================
+# TITLE
+# ==============================================================
 
 st.title("📊 Sales Report Automation")
 
@@ -70,8 +83,12 @@ if uploaded_file is not None:
     # REPORT SELECTION
     # ==========================================================
 
-    col1, col2, col3, col4, col5 = st.columns(5)
+    col1, col2, col3, col4, col5, col6 = st.columns(6)
 
+
+    # ==========================================================
+    # TARGET PERCENTAGE
+    # ==========================================================
 
     with col1:
 
@@ -86,6 +103,10 @@ if uploaded_file is not None:
         )
 
 
+    # ==========================================================
+    # DAY-WISE BRANCH
+    # ==========================================================
+
     with col2:
 
         st.markdown("### 📅 Day-wise Branch")
@@ -98,6 +119,10 @@ if uploaded_file is not None:
             "Select Day-wise Branch Report"
         )
 
+
+    # ==========================================================
+    # SALESMAN TARGET
+    # ==========================================================
 
     with col3:
 
@@ -112,6 +137,10 @@ if uploaded_file is not None:
         )
 
 
+    # ==========================================================
+    # MABELLAH SALES
+    # ==========================================================
+
     with col4:
 
         st.markdown("### 🏪 Mabellah Sales")
@@ -125,6 +154,10 @@ if uploaded_file is not None:
         )
 
 
+    # ==========================================================
+    # PICK / TRANSFER
+    # ==========================================================
+
     with col5:
 
         st.markdown("### 📦 Pick / Transfer")
@@ -136,6 +169,136 @@ if uploaded_file is not None:
         pick_transfer_selected = st.checkbox(
             "Select Pick / Internal Transfer Report"
         )
+
+
+    # ==========================================================
+    # DELIVERY REPORT
+    # ==========================================================
+
+    with col6:
+
+        st.markdown("### 🚚 Deliveries")
+
+        st.write(
+            "Generate the store-wise driver delivery report."
+        )
+
+        delivery_selected = st.checkbox(
+            "Select Store Wise Delivery Report"
+        )
+
+
+    # ==========================================================
+    # DELIVERY DATE FILTER
+    #
+    # THIS FILTER APPEARS ONLY WHEN DELIVERY REPORT IS SELECTED
+    # ==========================================================
+
+    delivery_start_date = None
+    delivery_end_date = None
+
+
+    if delivery_selected:
+
+        st.divider()
+
+        st.subheader(
+            "🚚 Delivery Report Filters"
+        )
+
+        try:
+
+            # --------------------------------------------------
+            # Read file only to get Order Updated At dates
+            # --------------------------------------------------
+
+            preview_df = pd.read_excel(
+                uploaded_file
+            )
+
+
+            # --------------------------------------------------
+            # Check column
+            # --------------------------------------------------
+
+            if "Order Updated At" not in preview_df.columns:
+
+                st.error(
+                    "Delivery Report requires "
+                    "'Order Updated At' column."
+                )
+
+            else:
+
+                preview_df["Order Updated At"] = pd.to_datetime(
+                    preview_df["Order Updated At"],
+                    errors="coerce"
+                )
+
+
+                valid_dates = preview_df[
+                    "Order Updated At"
+                ].dropna()
+
+
+                if valid_dates.empty:
+
+                    st.error(
+                        "No valid dates found in "
+                        "'Order Updated At'."
+                    )
+
+                else:
+
+                    min_date = valid_dates.min().date()
+                    max_date = valid_dates.max().date()
+
+
+                    # --------------------------------------------------
+                    # DATE SELECTION
+                    # --------------------------------------------------
+
+                    date_col1, date_col2 = st.columns(2)
+
+
+                    with date_col1:
+
+                        delivery_start_date = st.date_input(
+                            "From Date",
+                            value=min_date,
+                            min_value=min_date,
+                            max_value=max_date,
+                            key="delivery_start_date"
+                        )
+
+
+                    with date_col2:
+
+                        delivery_end_date = st.date_input(
+                            "To Date",
+                            value=max_date,
+                            min_value=min_date,
+                            max_value=max_date,
+                            key="delivery_end_date"
+                        )
+
+
+                    # --------------------------------------------------
+                    # INVALID DATE CHECK
+                    # --------------------------------------------------
+
+                    if delivery_start_date > delivery_end_date:
+
+                        st.error(
+                            "From Date cannot be greater than To Date."
+                        )
+
+
+        except Exception as e:
+
+            st.error(
+                f"Unable to read delivery dates: {e}"
+            )
 
 
     st.divider()
@@ -152,14 +315,24 @@ if uploaded_file is not None:
     )
 
 
+    # ==========================================================
+    # GENERATE
+    # ==========================================================
+
     if generate:
+
+
+        # ======================================================
+        # CHECK REPORT SELECTION
+        # ======================================================
 
         if not any([
             target_selected,
             daywise_selected,
             salesman_selected,
             mabellah_selected,
-            pick_transfer_selected
+            pick_transfer_selected,
+            delivery_selected
         ]):
 
             st.warning(
@@ -167,6 +340,33 @@ if uploaded_file is not None:
             )
 
             st.stop()
+
+
+        # ======================================================
+        # CHECK DELIVERY DATES
+        # ======================================================
+
+        if delivery_selected:
+
+            if (
+                delivery_start_date is None
+                or delivery_end_date is None
+            ):
+
+                st.error(
+                    "Please select Delivery Report dates."
+                )
+
+                st.stop()
+
+
+            if delivery_start_date > delivery_end_date:
+
+                st.error(
+                    "From Date cannot be greater than To Date."
+                )
+
+                st.stop()
 
 
         # ======================================================
@@ -180,6 +380,10 @@ if uploaded_file is not None:
         )
 
 
+        # ======================================================
+        # SAVE UPLOADED FILE
+        # ======================================================
+
         input_path = (
             workdir / uploaded_file.name
         )
@@ -190,17 +394,26 @@ if uploaded_file is not None:
         )
 
 
+        # ======================================================
+        # GENERATED REPORTS
+        # ======================================================
+
         generated = []
 
         errors = []
 
+
+        # ======================================================
+        # NUMBER OF SELECTED REPORTS
+        # ======================================================
 
         selected_count = sum([
             target_selected,
             daywise_selected,
             salesman_selected,
             mabellah_selected,
-            pick_transfer_selected
+            pick_transfer_selected,
+            delivery_selected
         ])
 
 
@@ -225,9 +438,11 @@ if uploaded_file is not None:
                         str(input_path)
                     )
 
+
                     target_df = target_percenntage(
                         df_target
                     )
+
 
                     report_date = (
                         pd.to_datetime(
@@ -238,16 +453,19 @@ if uploaded_file is not None:
                         .normalize()
                     )
 
+
                     output = (
                         workdir
                         / "Target_Percentage_Report.xlsx"
                     )
+
 
                     format_report(
                         target_df,
                         str(output),
                         report_date
                     )
+
 
                     generated.append(
                         (
@@ -256,11 +474,13 @@ if uploaded_file is not None:
                         )
                     )
 
+
             except Exception as e:
 
                 errors.append(
                     f"Target Percentage Report: {e}"
                 )
+
 
             done += 1
 
@@ -286,10 +506,12 @@ if uploaded_file is not None:
                         / "Daywise_Sales_Report.xlsx"
                     )
 
+
                     split_date_into_columns(
                         str(input_path),
                         str(output)
                     )
+
 
                     generated.append(
                         (
@@ -298,11 +520,13 @@ if uploaded_file is not None:
                         )
                     )
 
+
             except Exception as e:
 
                 errors.append(
                     f"Day-wise Branch Report: {e}"
                 )
+
 
             done += 1
 
@@ -327,22 +551,26 @@ if uploaded_file is not None:
                         str(input_path)
                     )
 
+
                     salesman_df, salesman_date = (
                         sales_person_report(
                             df_salesman
                         )
                     )
 
+
                     output = (
                         workdir
                         / "Sales_Man_Daily_Target_Review.xlsx"
                     )
+
 
                     create_excel_report(
                         salesman_df,
                         salesman_date,
                         str(output)
                     )
+
 
                     generated.append(
                         (
@@ -351,11 +579,13 @@ if uploaded_file is not None:
                         )
                     )
 
+
             except Exception as e:
 
                 errors.append(
                     f"Salesman Daily Target Report: {e}"
                 )
+
 
             done += 1
 
@@ -381,10 +611,12 @@ if uploaded_file is not None:
                         / "Mabellah_Sales_Report.xlsx"
                     )
 
+
                     generate_mabellah_sales_report(
                         str(input_path),
                         str(output)
                     )
+
 
                     generated.append(
                         (
@@ -393,11 +625,13 @@ if uploaded_file is not None:
                         )
                     )
 
+
             except Exception as e:
 
                 errors.append(
                     f"Mabellah Sales Report: {e}"
                 )
+
 
             done += 1
 
@@ -423,10 +657,12 @@ if uploaded_file is not None:
                         / "Store_Wise_Pick_Count_Report.xlsx"
                     )
 
+
                     generate_store_pick_report(
                         str(input_path),
                         str(output)
                     )
+
 
                     generated.append(
                         (
@@ -435,11 +671,13 @@ if uploaded_file is not None:
                         )
                     )
 
+
             except Exception as e:
 
                 errors.append(
                     f"Store Wise Pick / Internal Transfer Report: {e}"
                 )
+
 
             done += 1
 
@@ -449,7 +687,55 @@ if uploaded_file is not None:
 
 
         # ======================================================
-        # SHOW ERRORS
+        # STORE WISE DELIVERY REPORT
+        # ======================================================
+
+        if delivery_selected:
+
+            try:
+
+                with st.spinner(
+                    "Generating Store Wise Delivery Report..."
+                ):
+
+                    output = (
+                        workdir
+                        / "Store_Wise_Delivery_Report.xlsx"
+                    )
+
+
+                    generate_delivery_report(
+                        input_file=str(input_path),
+                        output_file=str(output),
+                        start_date=delivery_start_date,
+                        end_date=delivery_end_date
+                    )
+
+
+                    generated.append(
+                        (
+                            "🚚 Store Wise Delivery Report",
+                            output
+                        )
+                    )
+
+
+            except Exception as e:
+
+                errors.append(
+                    f"Store Wise Delivery Report: {e}"
+                )
+
+
+            done += 1
+
+            progress.progress(
+                done / selected_count
+            )
+
+
+        # ======================================================
+        # ERRORS
         # ======================================================
 
         if errors:
@@ -460,7 +746,7 @@ if uploaded_file is not None:
 
 
         # ======================================================
-        # DOWNLOADS
+        # DOWNLOAD REPORTS
         # ======================================================
 
         if generated:
@@ -468,6 +754,7 @@ if uploaded_file is not None:
             st.success(
                 "✅ Report generation completed!"
             )
+
 
             st.subheader(
                 "📥 Download Reports"
@@ -478,9 +765,7 @@ if uploaded_file is not None:
 
                 st.download_button(
 
-                    label=(
-                        f"Download {label}"
-                    ),
+                    label=f"Download {label}",
 
                     data=path.read_bytes(),
 
