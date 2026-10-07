@@ -17,25 +17,73 @@ def target_newfile(file_path):
     )
 
     # =========================================================
-    # STORE NAME CLEANING
+    # STORE NAME MAPPING
+    # =========================================================
+    #
+    # IMPORTANT:
+    # These are ONLY NAME CHANGES.
+    #
+    # SPM branches are NOT merged.
+    #
+    # Source name                  Report name
+    # ---------------------------------------------------------
+    # Sharjah_UAE                  SHARJAH
+    # Rashidiya(SPM)               RASHIDIYA
+    # Dubai                        DUBAI
+    # Qusais_Sales SPM             QUSAIS
+    # Ajman(SPM)                   AJMAN
+    # Al Quoz                      AL QUOZ
+    #
+    # Al Quoz(SPM)                 Al Quoz(SPM)
+    # Abu_Dhabi_SPM                Abu_Dhabi_SPM
+    # Abu_Dhabi_UAE                Abu_Dhabi_UAE
+    # Ras Al Khor(SPM)             Ras Al Khor(SPM)
+    # DIP                          DIP
+    #
     # =========================================================
 
-    # IMPORTANT:
-    # DO NOT MERGE SPM BRANCHES WITH NORMAL BRANCHES
-    #
-    # Al Quoz        -> Al Quoz
-    # Al Quoz(SPM)   -> Al Quoz(SPM)
-    #
-    # Abu_Dhabi_SPM  -> Abu_Dhabi_SPM
-    # Abu_Dhabi_UAE  -> Abu_Dhabi_UAE
-    #
-    # Ras Al Khor(SPM) -> Ras Al Khor(SPM)
-    # Dubai            -> Dubai
+    store_mapping = {
+
+        "Sharjah_UAE": "SHARJAH",
+
+        "Rashidiya(SPM)": "RASHIDIYA",
+
+        "Dubai": "DUBAI",
+
+        "Qusais_Sales SPM": "QUSAIS",
+
+        "Ajman(SPM)": "AJMAN",
+
+        "Al Quoz": "AL QUOZ",
+
+        # Keep SPM branches separate
+        "Al Quoz(SPM)": "Al Quoz(SPM)",
+
+        "Abu_Dhabi_SPM": "Abu_Dhabi_SPM",
+
+        "Abu_Dhabi_UAE": "Abu_Dhabi_UAE",
+
+        "Ras Al Khor(SPM)": "Ras Al Khor(SPM)",
+
+        "DIP": "DIP"
+    }
+
+    # =========================================================
+    # CLEAN STORE COLUMN
+    # =========================================================
 
     df["STORE"] = (
         df["STORE"]
         .astype("string")
         .str.strip()
+    )
+
+    # =========================================================
+    # APPLY STORE NAME MAPPING
+    # =========================================================
+
+    df["STORE"] = df["STORE"].replace(
+        store_mapping
     )
 
     # =========================================================
@@ -55,6 +103,15 @@ def target_newfile(file_path):
         dayfirst=True,
         errors="coerce"
     )
+
+    # =========================================================
+    # CONVERT SALES TO NUMERIC
+    # =========================================================
+
+    df["SUB TOTAL"] = pd.to_numeric(
+        df["SUB TOTAL"],
+        errors="coerce"
+    ).fillna(0)
 
     return df
 
@@ -77,11 +134,10 @@ def target_percenntage(df):
     # =========================================================
     # 2. FIXED STORE-WISE TARGET
     # =========================================================
-
-    # IMPORTANT:
-    # EVERY BRANCH IS SEPARATE
     #
-    # NO SPM BRANCH IS MERGED WITH ANOTHER BRANCH
+    # NEW TARGETS
+    #
+    # =========================================================
 
     targets = {
 
@@ -109,6 +165,16 @@ def target_percenntage(df):
     }
 
     # =========================================================
+    # TOTAL TARGET
+    # =========================================================
+    #
+    # 3 + 5 + 4 + 3 + 7 + 3 + 2 + 7 + 6 + 6 + 8
+    #
+    # = 54 LAKH
+    #
+    # =========================================================
+
+    # =========================================================
     # 3. CREATE REPORT
     # =========================================================
 
@@ -132,7 +198,9 @@ def target_percenntage(df):
     # 4. ACHIEVED SALES TILL NOW
     # =========================================================
 
-    report["ACHIEVED SALES TILL NOW"] = (
+    report[
+        "ACHIEVED SALES TILL NOW"
+    ] = (
 
         report["BRANCH"]
         .map(sales)
@@ -143,9 +211,12 @@ def target_percenntage(df):
     # 5. ACHIEVED SALES % TILL NOW
     # =========================================================
 
-    report["ACHIEVED SALES % TILL NOW"] = (
+    report[
+        "ACHIEVED SALES % TILL NOW"
+    ] = (
 
         report["ACHIEVED SALES TILL NOW"]
+
         / report["TOTAL TARGET"]
 
     ).round(4)
@@ -154,9 +225,12 @@ def target_percenntage(df):
     # 6. REMAINING TARGET
     # =========================================================
 
-    report["REMAINING TARGET"] = (
+    report[
+        "REMAINING TARGET"
+    ] = (
 
         report["TOTAL TARGET"]
+
         - report["ACHIEVED SALES TILL NOW"]
 
     ).clip(
@@ -186,7 +260,6 @@ def target_percenntage(df):
     )
 
     month_end = (
-
         report_date
         + pd.offsets.MonthEnd(0)
     )
@@ -271,25 +344,31 @@ def target_percenntage(df):
         # STORE RESULTS
         # -----------------------------------------------------
 
-        branch_working_days[branch] = (
-            working_days
-        )
+        branch_working_days[
+            branch
+        ] = working_days
 
-        branch_working_days_till_now[branch] = (
-            working_days_till_now
-        )
+        branch_working_days_till_now[
+            branch
+        ] = working_days_till_now
 
     # =========================================================
     # 11. ADD WORKING DAYS TO REPORT
     # =========================================================
 
-    report["WORKING DAYS THIS MONTH"] = (
+    report[
+        "WORKING DAYS THIS MONTH"
+    ] = (
 
         report["BRANCH"]
-        .map(branch_working_days)
+        .map(
+            branch_working_days
+        )
     )
 
-    report["WORKING DAYS TILL NOW"] = (
+    report[
+        "WORKING DAYS TILL NOW"
+    ] = (
 
         report["BRANCH"]
         .map(
@@ -301,9 +380,12 @@ def target_percenntage(df):
     # 12. REMAINING DAYS
     # =========================================================
 
-    report["REMAINING DAYS"] = (
+    report[
+        "REMAINING DAYS"
+    ] = (
 
         report["WORKING DAYS THIS MONTH"]
+
         - report["WORKING DAYS TILL NOW"]
     )
 
@@ -338,15 +420,12 @@ def target_percenntage(df):
     # 14. DAILY TARGET TO BE FOLLOW
     # =========================================================
 
-    # Keep original value for calculations
-
     daily_target = (
 
         report["TOTAL TARGET"]
+
         / report["WORKING DAYS THIS MONTH"]
     )
-
-    # Display value
 
     report[
         "DAILY TARGET TO BE FOLLOW"
@@ -364,6 +443,7 @@ def target_percenntage(df):
     ] = (
 
         report["WORKING DAYS TILL NOW"]
+
         * daily_target
 
     ).round(2)
@@ -372,9 +452,12 @@ def target_percenntage(df):
     # 16. REQUIRED SALES %
     # =========================================================
 
-    report["REQUIRED SALES %"] = (
+    report[
+        "REQUIRED SALES %"
+    ] = (
 
         report["REMAINING TARGET"]
+
         / report["TOTAL TARGET"]
 
     ).round(4)
@@ -498,11 +581,13 @@ def format_report(
     )
 
     # =========================================================
-    # APPLY COLOR TO DATE ROW
+    # APPLY DATE ROW COLOR
     # =========================================================
 
     for col in range(
+
         1,
+
         last_col + 1
     ):
 
@@ -587,13 +672,6 @@ def format_report(
         style="thin",
 
         color="F4B183"
-    )
-
-    black_side = Side(
-
-        style="thin",
-
-        color="000000"
     )
 
     # =========================================================
@@ -696,9 +774,7 @@ def format_report(
         last_data_row + 1
     ):
 
-        # -----------------------------------------------------
-        # ALTERNATE ROW COLORS
-        # -----------------------------------------------------
+        # Alternate row colors
 
         if (
 
@@ -713,10 +789,6 @@ def format_report(
         else:
 
             fill = white_fill
-
-        # -----------------------------------------------------
-        # APPLY TO ALL CELLS
-        # -----------------------------------------------------
 
         for col in range(
 
@@ -735,8 +807,6 @@ def format_report(
             cell.fill = fill
 
             cell.border = normal_border
-
-            # ALL VALUES BOLD
 
             cell.font = Font(
 
@@ -783,17 +853,13 @@ def format_report(
                 column=col_num
             )
 
-            # -------------------------------------------------
-            # PERCENTAGE COLUMNS
-            # -------------------------------------------------
+            # Percentage columns
 
             if "%" in column_name:
 
                 cell.number_format = "0.00%"
 
-            # -------------------------------------------------
-            # TARGET / SALES COLUMNS
-            # -------------------------------------------------
+            # Target / Sales columns
 
             elif any(
 
@@ -811,9 +877,7 @@ def format_report(
 
                 cell.number_format = "#,##0.00"
 
-            # -------------------------------------------------
-            # DAYS COLUMNS
-            # -------------------------------------------------
+            # Days columns
 
             elif "DAYS" in column_name:
 
@@ -898,9 +962,7 @@ def format_report(
     # 10. WRITE TOTAL VALUES
     # =========================================================
 
-    # ---------------------------------------------------------
     # C - TOTAL TARGET
-    # ---------------------------------------------------------
 
     ws.cell(
 
@@ -916,9 +978,7 @@ def format_report(
         column=3
     ).number_format = "#,##0.00"
 
-    # ---------------------------------------------------------
     # D - ACHIEVED SALES
-    # ---------------------------------------------------------
 
     ws.cell(
 
@@ -934,9 +994,7 @@ def format_report(
         column=4
     ).number_format = "#,##0.00"
 
-    # ---------------------------------------------------------
     # E - REMAINING TARGET
-    # ---------------------------------------------------------
 
     ws.cell(
 
@@ -952,9 +1010,7 @@ def format_report(
         column=5
     ).number_format = "#,##0.00"
 
-    # ---------------------------------------------------------
     # F - REMAINING DAYS
-    # ---------------------------------------------------------
 
     ws.cell(
 
@@ -963,9 +1019,7 @@ def format_report(
         column=6
     ).value = None
 
-    # ---------------------------------------------------------
     # G - REMAINING DAILY TARGET
-    # ---------------------------------------------------------
 
     ws.cell(
 
@@ -981,9 +1035,7 @@ def format_report(
         column=7
     ).number_format = "#,##0.00"
 
-    # ---------------------------------------------------------
     # H - ACHIEVED SALES %
-    # ---------------------------------------------------------
 
     ws.cell(
 
@@ -999,9 +1051,7 @@ def format_report(
         column=8
     ).number_format = "0.00%"
 
-    # ---------------------------------------------------------
     # I - WORKING DAYS THIS MONTH
-    # ---------------------------------------------------------
 
     ws.cell(
 
@@ -1010,9 +1060,7 @@ def format_report(
         column=9
     ).value = None
 
-    # ---------------------------------------------------------
     # J - DAILY TARGET
-    # ---------------------------------------------------------
 
     ws.cell(
 
@@ -1021,9 +1069,7 @@ def format_report(
         column=10
     ).value = None
 
-    # ---------------------------------------------------------
     # K - WORKING DAYS TILL NOW
-    # ---------------------------------------------------------
 
     ws.cell(
 
@@ -1032,9 +1078,7 @@ def format_report(
         column=11
     ).value = None
 
-    # ---------------------------------------------------------
     # L - TARGET HAPPENED TILL NOW
-    # ---------------------------------------------------------
 
     ws.cell(
 
@@ -1050,9 +1094,7 @@ def format_report(
         column=12
     ).number_format = "#,##0.00"
 
-    # ---------------------------------------------------------
     # M - REQUIRED SALES %
-    # ---------------------------------------------------------
 
     ws.cell(
 
@@ -1109,7 +1151,7 @@ def format_report(
         )
 
     # =========================================================
-    # 12. SPECIAL TOTAL CELL
+    # SPECIAL TOTAL CELL
     # ACHIEVED SALES TOTAL - ORANGE
     # =========================================================
 
@@ -1121,7 +1163,7 @@ def format_report(
     ).fill = total_orange_fill
 
     # =========================================================
-    # 13. COLUMN WIDTH
+    # 12. COLUMN WIDTH
     # =========================================================
 
     widths = {
@@ -1176,13 +1218,8 @@ def format_report(
         ].width = width
 
     # =========================================================
-    # 14. HIDE COLUMNS
+    # 13. HIDE COLUMNS
     # =========================================================
-
-    # I = WORKING DAYS THIS MONTH
-    # J = DAILY TARGET TO BE FOLLOW
-    # K = WORKING DAYS TILL NOW
-    # L = TOTAL TARGET HAVE TO BE HAPPENED TILL NOW
 
     ws.column_dimensions[
         "I"
@@ -1201,28 +1238,20 @@ def format_report(
     ].hidden = True
 
     # =========================================================
-    # 15. ROW HEIGHT
+    # 14. ROW HEIGHT
     # =========================================================
-
-    # DATE ROW
 
     ws.row_dimensions[
         1
     ].height = 25
 
-    # BLANK ROW BETWEEN DATE AND HEADER
-
     ws.row_dimensions[
         2
     ].height = 10
 
-    # HEADER
-
     ws.row_dimensions[
         3
     ].height = 60
-
-    # DATA
 
     for row in range(
 
@@ -1235,19 +1264,13 @@ def format_report(
             row
         ].height = 30
 
-    # TOTAL
-
     ws.row_dimensions[
         total_row
     ].height = 30
 
     # =========================================================
-    # 16. ALIGNMENT
+    # 15. ALIGNMENT
     # =========================================================
-
-    # ---------------------------------------------------------
-    # DATE
-    # ---------------------------------------------------------
 
     ws["A1"].alignment = Alignment(
 
@@ -1255,10 +1278,6 @@ def format_report(
 
         vertical="center"
     )
-
-    # ---------------------------------------------------------
-    # HEADER
-    # ---------------------------------------------------------
 
     for cell in ws[3]:
 
@@ -1270,10 +1289,6 @@ def format_report(
 
             wrap_text=True
         )
-
-    # ---------------------------------------------------------
-    # DATA + TOTAL
-    # ---------------------------------------------------------
 
     for row in range(
 
@@ -1303,13 +1318,13 @@ def format_report(
             )
 
     # =========================================================
-    # 17. FREEZE HEADER
+    # 16. FREEZE HEADER
     # =========================================================
 
     ws.freeze_panes = "A4"
 
     # =========================================================
-    # 18. SAVE
+    # 17. SAVE
     # =========================================================
 
     wb.save(
@@ -1326,14 +1341,14 @@ def format_report(
 
 
 # =============================================================
-# 19. RUN REPORT
+# 18. RUN REPORT
 # =============================================================
 
 if __name__ == "__main__":
 
-    # ---------------------------------------------------------
-    # INPUT / OUTPUT FILE
-    # ---------------------------------------------------------
+    # =========================================================
+    # CHANGE INPUT / OUTPUT PATH IF REQUIRED
+    # =========================================================
 
     input_file = (
         "/content/sample_data/input.xlsx"
@@ -1343,25 +1358,25 @@ if __name__ == "__main__":
         "/content/target_report.xlsx"
     )
 
-    # ---------------------------------------------------------
+    # =========================================================
     # READ AND CLEAN INPUT EXCEL
-    # ---------------------------------------------------------
+    # =========================================================
 
     df = target_newfile(
         input_file
     )
 
-    # ---------------------------------------------------------
+    # =========================================================
     # CREATE TARGET REPORT
-    # ---------------------------------------------------------
+    # =========================================================
 
     report = target_percenntage(
         df
     )
 
-    # ---------------------------------------------------------
-    # USE LATEST DATE AVAILABLE
-    # ---------------------------------------------------------
+    # =========================================================
+    # USE LATEST DATE FROM INPUT
+    # =========================================================
 
     report_date = (
 
@@ -1373,9 +1388,9 @@ if __name__ == "__main__":
         .normalize()
     )
 
-    # ---------------------------------------------------------
+    # =========================================================
     # CREATE FORMATTED EXCEL REPORT
-    # ---------------------------------------------------------
+    # =========================================================
 
     format_report(
 
