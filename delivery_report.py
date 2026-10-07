@@ -158,101 +158,38 @@ def generate_delivery_report(
     )
 
 
+    grand_total = 0
+
+
     # ==========================================================
     # CREATE WORKBOOK
     # ==========================================================
 
     wb = Workbook()
 
-    ws = wb.active
-
-    ws.title = "Delivery Report"
-
-
-    # ==========================================================
-    # TITLE
-    # ==========================================================
-
-    if start_date.month == end_date.month:
-
-        title = (
-            "STORE WISE DELIVERIES - "
-            f"{start_date.strftime('%B').upper()}-"
-            f"{end_date.day}"
-        )
-
-    else:
-
-        title = (
-            "STORE WISE DELIVERIES - "
-            f"{start_date.strftime('%d-%m-%Y')} "
-            f"TO "
-            f"{end_date.strftime('%d-%m-%Y')}"
-        )
-
-
-    ws.merge_cells(
-        "A1:D1"
-    )
-
-
-    ws["A1"] = title
+    # Remove the default sheet.
+    default_ws = wb.active
+    wb.remove(default_ws)
 
 
     # ==========================================================
-    # TITLE STYLE
+    # COMMON STYLES
     # ==========================================================
-
-    yellow_fill = PatternFill(
-        fill_type="solid",
-        fgColor="FFFF00"
-    )
-
-
-    ws["A1"].fill = yellow_fill
-
-
-    ws["A1"].font = Font(
-        bold=True,
-        color="000000",
-        size=12
-    )
-
-
-    ws["A1"].alignment = Alignment(
-        horizontal="center",
-        vertical="center"
-    )
-
-
-    # ==========================================================
-    # HEADERS
-    # ==========================================================
-
-    headers = [
-        "Showroom",
-        "Driver",
-        "Status",
-        "Total"
-    ]
-
 
     blue_fill = PatternFill(
         fill_type="solid",
-        fgColor="5B7DBB"
+        fgColor="1F4E78"
     )
-
 
     white_font = Font(
-        color="FFFFFF"
+        color="FFFFFF",
+        bold=True
     )
-
 
     black_side = Side(
         style="thin",
         color="000000"
     )
-
 
     border = Border(
         left=black_side,
@@ -262,112 +199,251 @@ def generate_delivery_report(
     )
 
 
-    for column_number, header in enumerate(
-        headers,
-        start=1
-    ):
+    # ==========================================================
+    # CREATE SEPARATE SHEET FOR EACH SHOWROOM
+    # ==========================================================
 
-        cell = ws.cell(
+    if report_df.empty:
+
+        ws = wb.create_sheet(
+            title="Delivery Report"
+        )
+
+        headers = [
+            "SL NO",
+            "DRIVER NAME",
+            "VEHICLE",
+            "COUNT"
+        ]
+
+        for column_number, header in enumerate(
+            headers,
+            start=1
+        ):
+
+            cell = ws.cell(
+                row=1,
+                column=column_number,
+                value=header
+            )
+
+            cell.fill = blue_fill
+            cell.font = white_font
+            cell.border = border
+            cell.alignment = Alignment(
+                horizontal="center",
+                vertical="center"
+            )
+
+        ws.cell(
             row=2,
-            column=column_number,
-            value=header
+            column=1,
+            value="TOTAL"
         )
 
-        cell.fill = blue_fill
-
-        cell.font = white_font
-
-        cell.border = border
-
-        cell.alignment = Alignment(
-            horizontal="left",
-            vertical="center"
+        ws.cell(
+            row=2,
+            column=4,
+            value=0
         )
 
+        for column_number in range(1, 5):
 
-    # ==========================================================
-    # WRITE DATA
-    # ==========================================================
+            cell = ws.cell(
+                row=2,
+                column=column_number
+            )
 
-    excel_row = 3
+            cell.border = border
+            cell.font = Font(
+                bold=True
+            )
 
-    grand_total = 0
+    else:
+
+        for showroom, group in report_df.groupby(
+            "Showroom",
+            sort=False
+        ):
+
+            # Excel sheet names cannot contain these characters.
+            sheet_name = str(showroom)
+
+            for character in [
+                "\\",
+                "/",
+                "*",
+                "?",
+                ":",
+                "[",
+                "]"
+            ]:
+
+                sheet_name = sheet_name.replace(
+                    character,
+                    "-"
+                )
+
+            sheet_name = sheet_name[:31]
+
+            if not sheet_name:
+                sheet_name = "Delivery Report"
 
 
-    for showroom, group in report_df.groupby(
-        "Showroom",
-        sort=False
-    ):
-
-        showroom_total = int(
-            group["Total"].sum()
-        )
+            ws = wb.create_sheet(
+                title=sheet_name
+            )
 
 
-        grand_total += showroom_total
+            # ==================================================
+            # HEADERS
+            # ==================================================
+
+            headers = [
+                "SL NO",
+                "DRIVER NAME",
+                "VEHICLE",
+                "COUNT"
+            ]
 
 
-        first_driver = True
+            for column_number, header in enumerate(
+                headers,
+                start=1
+            ):
+
+                cell = ws.cell(
+                    row=1,
+                    column=column_number,
+                    value=header
+                )
+
+                cell.fill = blue_fill
+
+                cell.font = white_font
+
+                cell.border = border
+
+                cell.alignment = Alignment(
+                    horizontal="center",
+                    vertical="center"
+                )
 
 
-        # ======================================================
-        # DRIVER ROWS
-        # ======================================================
+            # ==================================================
+            # DRIVER DATA
+            # ==================================================
 
-        for _, row in group.iterrows():
+            excel_row = 2
 
-            if first_driver:
+            sl_no = 1
 
-                showroom_value = showroom
+            showroom_total = 0
 
-                first_driver = False
 
-            else:
+            for _, row in group.iterrows():
 
-                showroom_value = ""
+                driver_name = row["Driver"]
 
+                driver_count = int(
+                    row["Total"]
+                )
+
+                showroom_total += driver_count
+
+
+                ws.cell(
+                    row=excel_row,
+                    column=1,
+                    value=sl_no
+                )
+
+                ws.cell(
+                    row=excel_row,
+                    column=2,
+                    value=driver_name
+                )
+
+                # Vehicle intentionally blank.
+                ws.cell(
+                    row=excel_row,
+                    column=3,
+                    value=""
+                )
+
+                ws.cell(
+                    row=excel_row,
+                    column=4,
+                    value=driver_count
+                )
+
+
+                for column_number in range(1, 5):
+
+                    cell = ws.cell(
+                        row=excel_row,
+                        column=column_number
+                    )
+
+                    cell.border = border
+
+                    cell.alignment = Alignment(
+                        vertical="center"
+                    )
+
+
+                ws.cell(
+                    row=excel_row,
+                    column=1
+                ).alignment = Alignment(
+                    horizontal="center",
+                    vertical="center"
+                )
+
+
+                ws.cell(
+                    row=excel_row,
+                    column=4
+                ).alignment = Alignment(
+                    horizontal="center",
+                    vertical="center"
+                )
+
+
+                excel_row += 1
+
+                sl_no += 1
+
+
+            # ==================================================
+            # TOTAL
+            # ==================================================
 
             ws.cell(
                 row=excel_row,
                 column=1,
-                value=showroom_value
+                value="TOTAL"
             )
-
-
-            ws.cell(
-                row=excel_row,
-                column=2,
-                value=row["Driver"]
-            )
-
-
-            ws.cell(
-                row=excel_row,
-                column=3,
-                value="delivered"
-            )
-
 
             ws.cell(
                 row=excel_row,
                 column=4,
-                value=int(row["Total"])
+                value=showroom_total
             )
 
 
-            for column_number in range(
-                1,
-                5
-            ):
+            for column_number in range(1, 5):
 
                 cell = ws.cell(
                     row=excel_row,
                     column=column_number
                 )
 
-
                 cell.border = border
 
+                cell.font = Font(
+                    bold=True
+                )
 
                 cell.alignment = Alignment(
                     vertical="center"
@@ -376,156 +452,60 @@ def generate_delivery_report(
 
             ws.cell(
                 row=excel_row,
+                column=1
+            ).alignment = Alignment(
+                horizontal="center",
+                vertical="center"
+            )
+
+
+            ws.cell(
+                row=excel_row,
                 column=4
             ).alignment = Alignment(
-                horizontal="right",
+                horizontal="center",
                 vertical="center"
             )
 
 
-            excel_row += 1
+            # ==================================================
+            # COLUMN WIDTHS
+            # ==================================================
+
+            ws.column_dimensions["A"].width = 12
+            ws.column_dimensions["B"].width = 28
+            ws.column_dimensions["C"].width = 22
+            ws.column_dimensions["D"].width = 12
 
 
-        # ======================================================
-        # SHOWROOM TOTAL
-        # ======================================================
+            # ==================================================
+            # ROW HEIGHTS
+            # ==================================================
 
-        ws.cell(
-            row=excel_row,
-            column=1,
-            value=f"{showroom} Total"
-        )
+            ws.row_dimensions[1].height = 22
 
+            for row_number in range(
+                2,
+                excel_row + 1
+            ):
 
-        ws.cell(
-            row=excel_row,
-            column=4,
-            value=showroom_total
-        )
+                ws.row_dimensions[
+                    row_number
+                ].height = 20
 
 
-        for column_number in range(
-            1,
-            5
-        ):
+            # ==================================================
+            # FREEZE HEADER
+            # ==================================================
 
-            cell = ws.cell(
-                row=excel_row,
-                column=column_number
-            )
+            ws.freeze_panes = "A2"
 
 
-            cell.border = border
+            # ==================================================
+            # TOTAL / GRAND TOTAL
+            # ==================================================
 
-            cell.font = Font(
-                bold=True
-            )
-
-
-            cell.alignment = Alignment(
-                vertical="center"
-            )
-
-
-        ws.cell(
-            row=excel_row,
-            column=4
-        ).alignment = Alignment(
-            horizontal="right",
-            vertical="center"
-        )
-
-
-        excel_row += 1
-
-
-    # ==========================================================
-    # GRAND TOTAL
-    # ==========================================================
-
-    ws.cell(
-        row=excel_row,
-        column=1,
-        value="GRAND TOTAL"
-    )
-
-
-    ws.cell(
-        row=excel_row,
-        column=4,
-        value=grand_total
-    )
-
-
-    for column_number in range(
-        1,
-        5
-    ):
-
-        cell = ws.cell(
-            row=excel_row,
-            column=column_number
-        )
-
-
-        cell.border = border
-
-        cell.font = Font(
-            bold=True
-        )
-
-
-        cell.alignment = Alignment(
-            vertical="center"
-        )
-
-
-    ws.cell(
-        row=excel_row,
-        column=4
-    ).alignment = Alignment(
-        horizontal="right",
-        vertical="center"
-    )
-
-
-    # ==========================================================
-    # COLUMN WIDTHS
-    # ==========================================================
-
-    ws.column_dimensions["A"].width = 28
-
-    ws.column_dimensions["B"].width = 34
-
-    ws.column_dimensions["C"].width = 18
-
-    ws.column_dimensions["D"].width = 12
-
-
-    # ==========================================================
-    # ROW HEIGHTS
-    # ==========================================================
-
-    ws.row_dimensions[1].height = 25
-
-    ws.row_dimensions[2].height = 22
-
-
-    for row_number in range(
-        3,
-        excel_row + 1
-    ):
-
-        ws.row_dimensions[
-            row_number
-        ].height = 20
-
-
-    # ==========================================================
-    # FREEZE HEADER
-    # ==========================================================
-
-    ws.freeze_panes = "A3"
+            grand_total += showroom_total
 
 
     # ==========================================================
