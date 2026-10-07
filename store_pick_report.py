@@ -29,7 +29,7 @@ def generate_store_pick_report(file_path, output_file):
     all_sheets = pd.read_excel(
         file_path,
         sheet_name=None,
-        header=4
+        header=5
     )
 
 
