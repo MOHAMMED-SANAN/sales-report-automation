@@ -387,6 +387,11 @@ def generate_delivery_report(
 
                     cell.border = border
 
+                    cell.font = Font(
+                        size=12,
+                        bold=False
+                    )
+
                     cell.alignment = Alignment(
                         vertical="center"
                     )
@@ -442,7 +447,8 @@ def generate_delivery_report(
                 cell.border = border
 
                 cell.font = Font(
-                    bold=True
+                    bold=True,
+                    size=12
                 )
 
                 cell.alignment = Alignment(
@@ -472,17 +478,17 @@ def generate_delivery_report(
             # COLUMN WIDTHS
             # ==================================================
 
-            ws.column_dimensions["A"].width = 12
-            ws.column_dimensions["B"].width = 28
-            ws.column_dimensions["C"].width = 22
-            ws.column_dimensions["D"].width = 12
+            ws.column_dimensions["A"].width = 14
+            ws.column_dimensions["B"].width = 40
+            ws.column_dimensions["C"].width = 25
+            ws.column_dimensions["D"].width = 14
 
 
             # ==================================================
             # ROW HEIGHTS
             # ==================================================
 
-            ws.row_dimensions[1].height = 22
+            ws.row_dimensions[1].height = 28
 
             for row_number in range(
                 2,
@@ -491,7 +497,7 @@ def generate_delivery_report(
 
                 ws.row_dimensions[
                     row_number
-                ].height = 20
+                ].height = 26
 
 
             # ==================================================
