@@ -60,13 +60,13 @@ def generate_store_pick_report(file_path, output_file):
         print(f"Reading: {sheet_name}")
 
 
-        # REMOVE COMPLETELY EMPTY ROWS
+        # REMOVE EMPTY ROWS
         df = df.dropna(
             how="all"
         ).copy()
 
 
-        # REMOVE COMPLETELY EMPTY COLUMNS
+        # REMOVE EMPTY COLUMNS
         df = df.dropna(
             axis=1,
             how="all"
@@ -93,7 +93,7 @@ def generate_store_pick_report(file_path, output_file):
 
 
     # ========================================================
-    # 4. CHECK WHETHER DATA EXISTS
+    # 4. CHECK DATA
     # ========================================================
 
     if not all_data:
@@ -761,8 +761,6 @@ def generate_store_pick_report(file_path, output_file):
 
     ) as writer:
 
-        # MASTER DATA
-
         master_report_display.to_excel(
 
             writer,
@@ -775,8 +773,6 @@ def generate_store_pick_report(file_path, output_file):
 
         )
 
-
-        # STORE SHEETS
 
         for store_name in store_list:
 
@@ -854,42 +850,46 @@ def generate_store_pick_report(file_path, output_file):
     # 28. FONTS
     # ========================================================
 
+    # BIGGER TITLE
     title_font = Font(
 
         bold=True,
 
-        size=14,
+        size=16,
 
         color="1F4E78"
 
     )
 
 
+    # BIGGER HEADER
     header_font = Font(
 
         bold=True,
 
-        size=11,
+        size=12,
 
         color="FFFFFF"
 
     )
 
 
+    # BIGGER NORMAL CONTENT
     normal_font = Font(
 
         bold=True,
 
-        size=10
+        size=12
 
     )
 
 
+    # BIGGER TOTAL CONTENT
     total_font = Font(
 
         bold=True,
 
-        size=11
+        size=12
 
     )
 
@@ -944,27 +944,36 @@ def generate_store_pick_report(file_path, output_file):
 
     # ========================================================
     # 30. COLUMN WIDTHS
-    # MATCH SECOND IMAGE
+    # LARGER TABLE WIDTH
     # ========================================================
 
     def set_professional_widths(ws):
 
-        ws.column_dimensions["A"].width = 27
+        # STORE
+        ws.column_dimensions["A"].width = 29
 
-        ws.column_dimensions["B"].width = 28
+        # LAST UPDATED BY
+        ws.column_dimensions["B"].width = 31
 
-        ws.column_dimensions["C"].width = 25
+        # OPERATION TYPE
+        ws.column_dimensions["C"].width = 27
 
-        ws.column_dimensions["D"].width = 39
+        # DISTINCT COUNT
+        ws.column_dimensions["D"].width = 43
 
-        ws.column_dimensions["E"].width = 24
+        # DEMAND QTY
+        ws.column_dimensions["E"].width = 27
 
 
     # ========================================================
-    # 31. MERGE STORE COLUMN
+    # 31. MERGE STORE + LAST UPDATED BY
     # ========================================================
 
     def merge_store_cells(ws):
+
+        # ====================================================
+        # MERGE STORE COLUMN
+        # ====================================================
 
         current_row = 3
 
@@ -992,7 +1001,6 @@ def generate_store_pick_report(file_path, output_file):
             ).strip()
 
 
-            # DON'T MERGE TOTAL
             if (
 
                 current_value.endswith(" Total")
@@ -1013,7 +1021,6 @@ def generate_store_pick_report(file_path, output_file):
             end_row = start_row
 
 
-            # FIND END OF STORE
             while end_row + 1 <= ws.max_row:
 
                 next_value = ws.cell(
@@ -1058,7 +1065,6 @@ def generate_store_pick_report(file_path, output_file):
                 end_row += 1
 
 
-            # MERGE STORE
             if end_row > start_row:
 
                 ws.merge_cells(
@@ -1096,7 +1102,6 @@ def generate_store_pick_report(file_path, output_file):
 
                 merged_cell.font = normal_font
 
-
                 merged_cell.border = normal_border
 
 
@@ -1104,7 +1109,7 @@ def generate_store_pick_report(file_path, output_file):
 
 
         # ====================================================
-        # MERGE LAST UPDATED BY
+        # MERGE LAST UPDATED BY COLUMN
         # ====================================================
 
         current_row = 3
@@ -1177,7 +1182,6 @@ def generate_store_pick_report(file_path, output_file):
             end_row = start_row
 
 
-            # FIND SAME PERSON ROWS
             while end_row + 1 <= ws.max_row:
 
                 next_store = ws.cell(
@@ -1218,7 +1222,6 @@ def generate_store_pick_report(file_path, output_file):
                 ).value
 
 
-                # BLANK PERSON = SAME PERSON
                 if (
 
                     next_person is None
@@ -1239,7 +1242,6 @@ def generate_store_pick_report(file_path, output_file):
                 ).strip()
 
 
-                # DIFFERENT PERSON = STOP
                 if next_person != person_value:
 
                     break
@@ -1248,7 +1250,6 @@ def generate_store_pick_report(file_path, output_file):
                 end_row += 1
 
 
-            # MERGE PERSON
             if end_row > start_row:
 
                 ws.merge_cells(
@@ -1285,7 +1286,6 @@ def generate_store_pick_report(file_path, output_file):
 
 
                 merged_person_cell.font = normal_font
-
 
                 merged_person_cell.border = normal_border
 
@@ -1332,8 +1332,8 @@ def generate_store_pick_report(file_path, output_file):
         ws["A1"].border = total_border
 
 
-        # SAME SIZE AS SECOND IMAGE
-        ws.row_dimensions[1].height = 30
+        # BIGGER TITLE HEIGHT
+        ws.row_dimensions[1].height = 40
 
 
         # ====================================================
@@ -1362,8 +1362,8 @@ def generate_store_pick_report(file_path, output_file):
             cell.border = normal_border
 
 
-        # SAME SIZE AS SECOND IMAGE
-        ws.row_dimensions[2].height = 32
+        # BIGGER HEADER HEIGHT
+        ws.row_dimensions[2].height = 42
 
 
         # ====================================================
@@ -1429,10 +1429,10 @@ def generate_store_pick_report(file_path, output_file):
                     )
 
 
-                # TOTAL ROW HEIGHT
+                # BIGGER TOTAL ROW
                 ws.row_dimensions[
                     row[0].row
-                ].height = 27
+                ].height = 50
 
 
             # =================================================
@@ -1458,10 +1458,10 @@ def generate_store_pick_report(file_path, output_file):
                     )
 
 
-                # DATA ROW HEIGHT
+                # MUCH BIGGER DATA ROW
                 ws.row_dimensions[
                     row[0].row
-                ].height = 28
+                ].height = 58
 
 
         # ====================================================
@@ -1476,8 +1476,10 @@ def generate_store_pick_report(file_path, output_file):
 
         ):
 
+            # DISTINCT COUNT
             row[3].number_format = "#,##0"
 
+            # DEMAND QTY
             row[4].number_format = "#,##0"
 
 
@@ -1512,7 +1514,7 @@ def generate_store_pick_report(file_path, output_file):
         # KEEP GRIDLINES
         # ====================================================
 
-        # Gridlines intentionally remain visible.
+        # Gridlines remain visible.
 
 
         # ====================================================
@@ -1537,7 +1539,7 @@ def generate_store_pick_report(file_path, output_file):
 
 
         # ====================================================
-        # MERGE STORE + LAST UPDATED BY
+        # MERGE STORE + PERSON
         # ====================================================
 
         merge_store_cells(
@@ -1647,6 +1649,22 @@ def generate_store_pick_report(file_path, output_file):
     )
 
     print(
+        "✓ Larger table content"
+    )
+
+    print(
+        "✓ Larger font size"
+    )
+
+    print(
+        "✓ Larger row height"
+    )
+
+    print(
+        "✓ Larger column width"
+    )
+
+    print(
         "✓ Store column vertically merged"
     )
 
@@ -1660,18 +1678,6 @@ def generate_store_pick_report(file_path, output_file):
 
     print(
         "✓ Grand Total included"
-    )
-
-    print(
-        "✓ Source Document distinct count"
-    )
-
-    print(
-        "✓ Demand Qty summed"
-    )
-
-    print(
-        "✓ All values bold"
     )
 
     print(
@@ -1692,10 +1698,6 @@ def generate_store_pick_report(file_path, output_file):
 
     print(
         "✓ Auto filter"
-    )
-
-    print(
-        "✓ Table size matched to reference"
     )
 
     print(
