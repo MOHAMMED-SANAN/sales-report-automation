@@ -125,7 +125,7 @@ def sales_person_report(df):
 
         ("Abu_Dhabi_UAE", "SUMESH MOHAN"): 45000,
 
-        ("Abu_Dhabi_UAE", "PRAJITH"): None,
+        ("Abu_Dhabi_UAE", "PRAJITH"): 80000,
 
 
         # ======================================================
@@ -136,7 +136,7 @@ def sales_person_report(df):
 
         ("Al Quoz", "DENNY"): 50000,
 
-        ("Al Quoz", "JOYSTON LOBO"): None,
+        ("Al Quoz", "JOYSTON LOBO"): 250000,
 
         ("Al Quoz", "LATHESH"): 225000,
 
