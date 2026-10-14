@@ -23,6 +23,22 @@ def salesman_newfile(file_path):
     )
 
     # ----------------------------------------------------------
+    # STEP 1: REMOVE ROWS WHERE SUB TOTAL IS ZERO
+    # This happens before the remaining data-cleaning steps.
+    # Blank or invalid SUB TOTAL values are also excluded.
+    # Negative values are retained.
+    # ----------------------------------------------------------
+    df["SUB TOTAL"] = pd.to_numeric(
+        df["SUB TOTAL"],
+        errors="coerce"
+    )
+
+    df = df[
+        df["SUB TOTAL"].notna() &
+        (df["SUB TOTAL"] != 0)
+    ].copy()
+
+    # ----------------------------------------------------------
     # STORE
     # ----------------------------------------------------------
     # File already contains MABELLAH.
