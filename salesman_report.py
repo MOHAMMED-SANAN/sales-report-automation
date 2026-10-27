@@ -228,7 +228,9 @@ def sales_person_report(df):
 
         ("Ajman(SPM)", "LOK RAJ"): 200000,
 
-        ("Ajman(SPM)", "RAMAN"): None
+        ("Ajman(SPM)", "RAMAN"): None,
+        
+        ("Ajman(SPM)", "RAMAN"): 150000
 
     }
 
