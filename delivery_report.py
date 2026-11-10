@@ -68,8 +68,6 @@ def generate_delivery_report(
 
     # ==========================================================
     # ORDER TYPE CORRECTION
-    # purchase_order -> PURCHASE ORDER
-    # sales_order    -> SALES ORDER
     # ==========================================================
 
     df["Order Type"] = (
@@ -296,12 +294,22 @@ def generate_delivery_report(
 
             sales_total += sales_count
 
+            # Show blank instead of zero
+
+            purchase_display = (
+                purchase_count if purchase_count != 0 else ""
+            )
+
+            sales_display = (
+                sales_count if sales_count != 0 else ""
+            )
+
             values = [
                 sl_no,
                 row["Driver"],
                 "",
-                purchase_count,
-                sales_count,
+                purchase_display,
+                sales_display,
                 total_count
             ]
 
@@ -337,12 +345,22 @@ def generate_delivery_report(
             purchase_total + sales_total
         )
 
+        # Blank if total purchase/sales is zero
+
+        purchase_total_display = (
+            purchase_total if purchase_total != 0 else ""
+        )
+
+        sales_total_display = (
+            sales_total if sales_total != 0 else ""
+        )
+
         total_values = [
             "Total",
             "",
             "",
-            purchase_total,
-            sales_total,
+            purchase_total_display,
+            sales_total_display,
             total_count
         ]
 
