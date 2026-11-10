@@ -18,23 +18,21 @@ def generate_delivery_report(
 ):
 
     # ==========================================================
-    # READ EXCEL
+    # READ ORIGINAL EXCEL
     # ==========================================================
 
     df = pd.read_excel(input_file)
 
     # ==========================================================
-    # COLUMN SETTINGS
+    # REQUIRED COLUMNS
     # ==========================================================
-
-    ORDER_TYPE_COLUMN = "Order Type"
 
     required_columns = [
         "Showroom",
         "Driver",
         "Status",
         "Order Updated At",
-        ORDER_TYPE_COLUMN
+        "Order Type"
     ]
 
     missing_columns = [
@@ -57,7 +55,8 @@ def generate_delivery_report(
         dayfirst=True
     )
 
-    for col in ["Status", "Showroom", "Driver", ORDER_TYPE_COLUMN]:
+    for col in ["Showroom", "Driver", "Status", "Order Type"]:
+
         df[col] = (
             df[col]
             .fillna("")
@@ -68,24 +67,25 @@ def generate_delivery_report(
     df["Status"] = df["Status"].str.lower()
 
     # ==========================================================
-    # NORMALIZE ORDER TYPE
+    # ORDER TYPE CORRECTION
+    # purchase_order -> PURCHASE ORDER
+    # sales_order    -> SALES ORDER
     # ==========================================================
+
+    df["Order Type"] = (
+        df["Order Type"]
+        .str.lower()
+        .str.replace("_", " ", regex=False)
+        .str.strip()
+    )
 
     order_type_mapping = {
         "purchase order": "PURCHASE ORDER",
-        "purchase": "PURCHASE ORDER",
-        "po": "PURCHASE ORDER",
-
-        "sales order": "SALES ORDER",
-        "sale order": "SALES ORDER",
-        "sales": "SALES ORDER",
-        "sale": "SALES ORDER",
-        "so": "SALES ORDER"
+        "sales order": "SALES ORDER"
     }
 
     df["REPORT ORDER TYPE"] = (
-        df[ORDER_TYPE_COLUMN]
-        .str.lower()
+        df["Order Type"]
         .map(order_type_mapping)
     )
 
@@ -102,7 +102,7 @@ def generate_delivery_report(
     )
 
     # ==========================================================
-    # FILTER DELIVERED ORDERS
+    # FILTER DELIVERED ORDERS ONLY
     # ==========================================================
 
     df = df[
@@ -116,7 +116,7 @@ def generate_delivery_report(
     ].copy()
 
     # ==========================================================
-    # DRIVER-WISE ORDER TYPE COUNT
+    # SHOWROOM + DRIVER + ORDER TYPE COUNT
     # ==========================================================
 
     report_df = (
@@ -132,10 +132,16 @@ def generate_delivery_report(
         .reset_index()
     )
 
-    # Ensure both columns always exist
+    # Ensure both order columns exist
+
     for col in ["PURCHASE ORDER", "SALES ORDER"]:
+
         if col not in report_df.columns:
             report_df[col] = 0
+
+    # ==========================================================
+    # TOTAL COUNT
+    # ==========================================================
 
     report_df["COUNT"] = (
         report_df["PURCHASE ORDER"]
@@ -156,14 +162,15 @@ def generate_delivery_report(
     )
 
     # ==========================================================
-    # CREATE WORKBOOK
+    # CREATE EXCEL WORKBOOK
     # ==========================================================
 
     wb = Workbook()
+
     wb.remove(wb.active)
 
     # ==========================================================
-    # COMMON STYLES
+    # STYLES
     # ==========================================================
 
     blue_fill = PatternFill(
@@ -198,12 +205,14 @@ def generate_delivery_report(
     ]
 
     # ==========================================================
-    # SHOWROOM SHEETS
+    # CREATE SEPARATE SHEET FOR EACH SHOWROOM
     # ==========================================================
 
     if report_df.empty:
 
-        showroom_groups = [( "Delivery Report", report_df )]
+        showroom_groups = [
+            ("Delivery Report", report_df)
+        ]
 
     else:
 
@@ -213,21 +222,30 @@ def generate_delivery_report(
 
     for showroom, group in showroom_groups:
 
-        # Clean Excel sheet name
+        # Sheet name cleaning
+
         sheet_name = str(showroom)
 
         for character in ["\\", "/", "*", "?", ":", "[", "]"]:
+
             sheet_name = sheet_name.replace(character, "-")
 
         sheet_name = sheet_name[:31] or "Delivery Report"
 
         # Avoid duplicate sheet names
+
         original_name = sheet_name
         counter = 1
 
         while sheet_name in wb.sheetnames:
+
             suffix = f"_{counter}"
-            sheet_name = original_name[:31-len(suffix)] + suffix
+
+            sheet_name = (
+                original_name[:31-len(suffix)]
+                + suffix
+            )
+
             counter += 1
 
         ws = wb.create_sheet(title=sheet_name)
@@ -236,11 +254,11 @@ def generate_delivery_report(
         # HEADERS
         # ======================================================
 
-        for column_number, header in enumerate(headers, start=1):
+        for col_num, header in enumerate(headers, start=1):
 
             cell = ws.cell(
                 row=1,
-                column=column_number,
+                column=col_num,
                 value=header
             )
 
@@ -254,10 +272,11 @@ def generate_delivery_report(
             )
 
         # ======================================================
-        # DRIVER DATA
+        # DRIVER-WISE DATA
         # ======================================================
 
         excel_row = 2
+
         sl_no = 1
 
         purchase_total = 0
@@ -265,30 +284,32 @@ def generate_delivery_report(
 
         for _, row in group.iterrows():
 
-            driver_name = row["Driver"]
-
             purchase_count = int(row["PURCHASE ORDER"])
+
             sales_count = int(row["SALES ORDER"])
 
-            total_count = purchase_count + sales_count
+            total_count = (
+                purchase_count + sales_count
+            )
 
             purchase_total += purchase_count
+
             sales_total += sales_count
 
             values = [
                 sl_no,
-                driver_name,
+                row["Driver"],
                 "",
                 purchase_count,
                 sales_count,
                 total_count
             ]
 
-            for column_number, value in enumerate(values, start=1):
+            for col_num, value in enumerate(values, start=1):
 
                 cell = ws.cell(
                     row=excel_row,
-                    column=column_number,
+                    column=col_num,
                     value=value
                 )
 
@@ -305,16 +326,19 @@ def generate_delivery_report(
                 )
 
             excel_row += 1
+
             sl_no += 1
 
         # ======================================================
         # TOTAL ROW
         # ======================================================
 
-        total_count = purchase_total + sales_total
+        total_count = (
+            purchase_total + sales_total
+        )
 
         total_values = [
-            "TOTAL",
+            "Total",
             "",
             "",
             purchase_total,
@@ -322,11 +346,11 @@ def generate_delivery_report(
             total_count
         ]
 
-        for column_number, value in enumerate(total_values, start=1):
+        for col_num, value in enumerate(total_values, start=1):
 
             cell = ws.cell(
                 row=excel_row,
-                column=column_number,
+                column=col_num,
                 value=value
             )
 
@@ -349,8 +373,8 @@ def generate_delivery_report(
         ws.column_dimensions["A"].width = 14
         ws.column_dimensions["B"].width = 40
         ws.column_dimensions["C"].width = 25
-        ws.column_dimensions["D"].width = 22
-        ws.column_dimensions["E"].width = 22
+        ws.column_dimensions["D"].width = 30
+        ws.column_dimensions["E"].width = 25
         ws.column_dimensions["F"].width = 14
 
         # ======================================================
@@ -360,6 +384,7 @@ def generate_delivery_report(
         ws.row_dimensions[1].height = 28
 
         for row_number in range(2, excel_row + 1):
+
             ws.row_dimensions[row_number].height = 26
 
         # ======================================================
@@ -369,10 +394,11 @@ def generate_delivery_report(
         ws.freeze_panes = "A2"
 
     # ==========================================================
-    # SAVE WORKBOOK
+    # SAVE REPORT
     # ==========================================================
 
     wb.save(output_file)
 
-    print("Delivery report generated successfully!")
-    print("Output:", output_file)
+    print("Delivery Report Generated Successfully!")
+
+    print("Output File:", output_file)
