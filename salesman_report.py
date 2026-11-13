@@ -110,7 +110,8 @@ def sales_person_report(df):
         # ======================================================
         # ABU DHABI
         # ======================================================
-
+        ("Abu_Dhabi_UAE", "BASIL ZAMAN"): 80000,
+        
         ("Abu_Dhabi_UAE", "DILEEP KUMAR"): 50000,
 
         ("Abu_Dhabi_UAE", "MOHAMMED NISAR"): 200000,
@@ -133,10 +134,14 @@ def sales_person_report(df):
         # ======================================================
 
         ("Al Quoz", "ANOOB"): 55000,
+        
+        ("Al Quoz", "BASIL"): 50000,
 
         ("Al Quoz", "DENNY"): 50000,
 
         ("Al Quoz", "JOYSTON LOBO"): 250000,
+        
+        ("Al Quoz", "LAKSHMANAN A"): 50000,
 
         ("Al Quoz", "LATHESH"): 225000,
 
@@ -167,7 +172,9 @@ def sales_person_report(df):
         ("Dubai", "ISHAQ"): 50000,
 
         ("Dubai", "MUJEEBU RAHMAN"): 50000,
-
+        
+        ("Dubai", "PRAJITH"): 80000,
+        
         ("Dubai", "RAHUL RAVINDRAN"): 50000,
 
         ("Dubai", "SATISH"): 50000,
@@ -228,7 +235,9 @@ def sales_person_report(df):
 
         ("Ajman(SPM)", "LOK RAJ"): 200000,
 
-        ("Ajman(SPM)", "RAMAN"): None
+        ("Ajman(SPM)", "RAMAN"): 150000,
+        
+        ("Ajman(SPM)", "SIJO SKARIA"): 270000
         
        
 
