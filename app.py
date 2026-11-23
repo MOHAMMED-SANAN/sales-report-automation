@@ -34,6 +34,12 @@ from delivery_report import (
     generate_delivery_report
 )
 
+# FAST MOVING REPORT
+from fast_moving_report import (
+    get_inventory_store_options,
+    generate_fast_moving_report,
+)
+
 
 # ==============================================================
 # PAGE CONFIG
@@ -83,7 +89,7 @@ if uploaded_file is not None:
     # REPORT SELECTION
     # ==========================================================
 
-    col1, col2, col3, col4, col5, col6 = st.columns(6)
+    col1, col2, col3, col4, col5, col6, col7 = st.columns(7)
 
 
     # ==========================================================
@@ -187,6 +193,69 @@ if uploaded_file is not None:
             "Select Store Wise Delivery Report"
         )
 
+    # ==========================================================
+    # FAST MOVING REPORT
+    # ==========================================================
+
+    with col7:
+
+        st.markdown("### 📦 Fast Moving")
+
+        st.write(
+            "Match fast-moving parts with selected store stock "
+            "and total stock from all warehouses."
+        )
+
+        fast_moving_selected = st.checkbox(
+            "Select Fast Moving Report"
+        )
+
+
+    # ==========================================================
+    # FAST MOVING INVENTORY INPUTS
+    # ==========================================================
+
+    inventory_file = None
+    selected_store = None
+
+    if fast_moving_selected:
+
+        st.divider()
+        st.subheader("📦 Fast Moving Report - Inventory Settings")
+
+        inventory_file = st.file_uploader(
+            "Upload Inventory Report Excel",
+            type=["xlsx", "xls"],
+            key="fast_moving_inventory_upload"
+        )
+
+        if inventory_file is not None:
+            try:
+                store_options = get_inventory_store_options(
+                    inventory_file.getvalue()
+                )
+
+                if not store_options:
+                    st.error(
+                        "No store names found in the inventory report. "
+                        "Warehouse rows beginning with WH_ are excluded "
+                        "from the store dropdown."
+                    )
+                else:
+                    selected_store = st.selectbox(
+                        "Select Store for STORE column",
+                        options=store_options,
+                        key="fast_moving_store_selection"
+                    )
+
+                    st.info(
+                        "STORE uses the selected store. WH automatically "
+                        "sums every inventory row whose Store value starts "
+                        "with WH_. Both use On Hand Qty."
+                    )
+
+            except Exception as e:
+                st.error(f"Unable to read inventory report: {e}")
 
     # ==========================================================
     # DELIVERY DATE FILTER
@@ -329,7 +398,8 @@ if uploaded_file is not None:
             salesman_selected,
             mabellah_selected,
             pick_transfer_selected,
-            delivery_selected
+            delivery_selected,
+            fast_moving_selected
         ]):
 
             st.warning(
@@ -337,6 +407,20 @@ if uploaded_file is not None:
             )
 
             st.stop()
+
+
+        # ======================================================
+        # CHECK FAST MOVING INPUTS
+        # ======================================================
+
+        if fast_moving_selected:
+            if inventory_file is None:
+                st.error("Please upload the Inventory Report Excel.")
+                st.stop()
+
+            if not selected_store:
+                st.error("Please select a store for the STORE column.")
+                st.stop()
 
 
         # ======================================================
@@ -410,7 +494,8 @@ if uploaded_file is not None:
             salesman_selected,
             mabellah_selected,
             pick_transfer_selected,
-            delivery_selected
+            delivery_selected,
+            fast_moving_selected
         ])
 
 
@@ -723,6 +808,50 @@ if uploaded_file is not None:
                     f"Store Wise Delivery Report: {e}"
                 )
 
+
+            done += 1
+
+            progress.progress(
+                done / selected_count
+            )
+
+
+        # ======================================================
+        # FAST MOVING REPORT
+        # ======================================================
+
+        if fast_moving_selected:
+
+            try:
+
+                with st.spinner(
+                    "Matching Fast Moving Report with store and warehouse stock..."
+                ):
+
+                    inventory_path = workdir / inventory_file.name
+                    inventory_path.write_bytes(inventory_file.getvalue())
+
+                    output = workdir / "Fast_Moving_Report_With_Stock.xlsx"
+
+                    generate_fast_moving_report(
+                        main_file=str(input_path),
+                        inventory_file=str(inventory_path),
+                        selected_store=selected_store,
+                        output_file=str(output)
+                    )
+
+                    generated.append(
+                        (
+                            "📦 Fast Moving Report",
+                            output
+                        )
+                    )
+
+            except Exception as e:
+
+                errors.append(
+                    f"Fast Moving Report: {e}"
+                )
 
             done += 1
 
