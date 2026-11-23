@@ -34,11 +34,61 @@ from delivery_report import (
     generate_delivery_report
 )
 
-# FAST MOVING REPORT
-from fast_moving_report import (
-    get_inventory_store_options,
-    generate_fast_moving_report,
-)
+
+def _clean_column_name(value):
+    return " ".join(str(value).strip().lower().replace("_", " ").split())
+
+
+def _find_column(df, possible_names, required=True):
+    lookup = {_clean_column_name(c): c for c in df.columns}
+    for name in possible_names:
+        found = lookup.get(_clean_column_name(name))
+        if found is not None:
+            return found
+    if required:
+        raise ValueError(
+            "Missing required column. Expected one of: " + ", ".join(possible_names)
+            + ". Available columns: " + ", ".join(map(str, df.columns))
+        )
+    return None
+
+
+def generate_fast_moving_report(main_file, inventory_file, selected_store, output_file):
+    """Add STORE and WH Available Qty to the main fast-moving report.
+
+    Matching key is Part Number + Make. Brand is deliberately ignored.
+    Duplicate inventory rows are summed.
+    """
+    main = pd.read_excel(main_file)
+    inventory = pd.read_excel(inventory_file)
+
+    main_part = _find_column(main, ["Part Number", "Part No", "Part#", "Part No."])
+    main_make = _find_column(main, ["Make", "Manufacturer"])
+    inv_part = _find_column(inventory, ["Part Number", "Part No", "Part#", "Part No."])
+    inv_make = _find_column(inventory, ["Make", "Manufacturer"])
+    store_col = _find_column(inventory, ["Store", "Branch", "Location", "Store Name"])
+    qty_col = _find_column(inventory, ["Available Qty", "Available Quantity", "Avail Qty"])
+
+    def key_part(series):
+        return series.fillna("").astype(str).str.strip().str.upper()
+
+    main_keys = key_part(main[main_part]) + "||" + key_part(main[main_make])
+    inv = inventory.copy()
+    inv["__part_key"] = key_part(inv[inv_part])
+    inv["__make_key"] = key_part(inv[inv_make])
+    inv["__key"] = inv["__part_key"] + "||" + inv["__make_key"]
+    inv["__qty"] = pd.to_numeric(inv[qty_col], errors="coerce").fillna(0)
+    stores = inv[store_col].fillna("").astype(str).str.strip()
+    is_wh = stores.str.match(r"^WH(?:_|\b|\s)", case=False)
+
+    store_totals = (inv.loc[stores.str.casefold() == str(selected_store).strip().casefold()]
+                    .groupby("__key")["__qty"].sum())
+    wh_totals = inv.loc[is_wh].groupby("__key")["__qty"].sum()
+
+    main["STORE"] = main_keys.map(store_totals).fillna(0)
+    main["WH"] = main_keys.map(wh_totals).fillna(0)
+    main.to_excel(output_file, index=False)
+    return main
 
 
 # ==============================================================
@@ -64,198 +114,88 @@ st.write(
 )
 
 
-# ==============================================================
-# FILE UPLOAD
-# ==============================================================
+# =============================================================
+# STEP 1: SELECT REPORT FIRST
+# =============================================================
 
-uploaded_file = st.file_uploader(
-    "Upload Excel Sales Report",
-    type=["xlsx", "xls"]
+report_options = {
+    "🎯 Target Percentage Report": "target",
+    "📅 Day-wise Branch Report": "daywise",
+    "👨‍💼 Salesman Daily Target Report": "salesman",
+    "🏪 Mabellah Sales Report": "mabellah",
+    "📦 Pick / Internal Transfer Report": "pick",
+    "🚚 Store Wise Delivery Report": "delivery",
+    "⚡ Fast Moving Report": "fast_moving",
+}
+
+st.subheader("1️⃣ Choose the report you want")
+selected_label = st.selectbox(
+    "Select Report",
+    options=list(report_options.keys()),
+    index=None,
+    placeholder="Choose a report...",
+    key="report_selector"
 )
+selected_report = report_options.get(selected_label) if selected_label else None
 
+uploaded_file = None
+inventory_file = None
+selected_store = None
 
-if uploaded_file is not None:
-
-    st.success(
-        f"File uploaded successfully: {uploaded_file.name}"
-    )
-
+if selected_report:
     st.divider()
+    st.subheader("2️⃣ Upload required Excel file(s)")
 
-    st.subheader("📋 Select Reports")
-
-
-    # ==========================================================
-    # REPORT SELECTION
-    # ==========================================================
-
-    col1, col2, col3, col4, col5, col6, col7 = st.columns(7)
-
-
-    # ==========================================================
-    # TARGET PERCENTAGE
-    # ==========================================================
-
-    with col1:
-
-        st.markdown("### 🎯 Target Percentage")
-
-        st.write(
-            "Generate the target percentage report."
-        )
-
-        target_selected = st.checkbox(
-            "Select Target Percentage Report"
-        )
-
-
-    # ==========================================================
-    # DAY-WISE BRANCH
-    # ==========================================================
-
-    with col2:
-
-        st.markdown("### 📅 Day-wise Branch")
-
-        st.write(
-            "Generate the day-wise sales report for each branch."
-        )
-
-        daywise_selected = st.checkbox(
-            "Select Day-wise Branch Report"
-        )
-
-
-    # ==========================================================
-    # SALESMAN TARGET
-    # ==========================================================
-
-    with col3:
-
-        st.markdown("### 👨‍💼 Salesman Target")
-
-        st.write(
-            "Generate the salesman daily target report."
-        )
-
-        salesman_selected = st.checkbox(
-            "Select Salesman Daily Target Report"
-        )
-
-
-    # ==========================================================
-    # MABELLAH SALES
-    # ==========================================================
-
-    with col4:
-
-        st.markdown("### 🏪 Mabellah Sales")
-
-        st.write(
-            "Generate the MABELLAH daily sales and quotation report."
-        )
-
-        mabellah_selected = st.checkbox(
-            "Select Mabellah Sales Report"
-        )
-
-
-    # ==========================================================
-    # PICK / TRANSFER
-    # ==========================================================
-
-    with col5:
-
-        st.markdown("### 📦 Pick / Transfer")
-
-        st.write(
-            "Generate the store-wise Pick and Internal Transfer report."
-        )
-
-        pick_transfer_selected = st.checkbox(
-            "Select Pick / Internal Transfer Report"
-        )
-
-
-    # ==========================================================
-    # DELIVERY REPORT
-    # ==========================================================
-
-    with col6:
-
-        st.markdown("### 🚚 Deliveries")
-
-        st.write(
-            "Generate the store-wise driver delivery report."
-        )
-
-        delivery_selected = st.checkbox(
-            "Select Store Wise Delivery Report"
-        )
-
-    # ==========================================================
-    # FAST MOVING REPORT
-    # ==========================================================
-
-    with col7:
-
-        st.markdown("### 📦 Fast Moving")
-
-        st.write(
-            "Match fast-moving parts with selected store stock "
-            "and total stock from all warehouses."
-        )
-
-        fast_moving_selected = st.checkbox(
-            "Select Fast Moving Report"
-        )
-
-
-    # ==========================================================
-    # FAST MOVING INVENTORY INPUTS
-    # ==========================================================
-
-    inventory_file = None
-    selected_store = None
-
-    if fast_moving_selected:
-
-        st.divider()
-        st.subheader("📦 Fast Moving Report - Inventory Settings")
-
-        inventory_file = st.file_uploader(
-            "Upload Inventory Report Excel",
-            type=["xlsx", "xls"],
-            key="fast_moving_inventory_upload"
-        )
+    if selected_report == "fast_moving":
+        upload_col1, upload_col2 = st.columns(2)
+        with upload_col1:
+            uploaded_file = st.file_uploader(
+                "Upload Fast Moving Sales Report", type=["xlsx", "xls"], key="fast_main_upload"
+            )
+        with upload_col2:
+            inventory_file = st.file_uploader(
+                "Upload Inventory Report", type=["xlsx", "xls"], key="fast_inventory_upload"
+            )
 
         if inventory_file is not None:
             try:
-                store_options = get_inventory_store_options(
-                    inventory_file.getvalue()
+                inventory_preview = pd.read_excel(inventory_file)
+                inventory_store_col = _find_column(
+                    inventory_preview, ["Store", "Branch", "Location", "Store Name"]
                 )
-
-                if not store_options:
-                    st.error(
-                        "No store names found in the inventory report. "
-                        "Warehouse rows beginning with WH_ are excluded "
-                        "from the store dropdown."
-                    )
+                all_store_names = (
+                    inventory_preview[inventory_store_col].dropna().astype(str).str.strip().unique().tolist()
+                )
+                store_names = sorted([
+                    name for name in all_store_names
+                    if not pd.Series([name]).str.match(r"^WH(?:_|\b|\s)", case=False).iloc[0]
+                ])
+                if store_names:
+                    selected_store = st.selectbox("Select Store", store_names, key="fast_store_select")
                 else:
-                    selected_store = st.selectbox(
-                        "Select Store for STORE column",
-                        options=store_options,
-                        key="fast_moving_store_selection"
-                    )
+                    st.error("No store names found in the inventory report (warehouse rows start with WH).")
+            except Exception as exc:
+                st.error(f"Unable to read Inventory Report: {exc}")
 
-                    st.info(
-                        "STORE uses the selected store. WH automatically "
-                        "sums every inventory row whose Store value starts "
-                        "with WH_. Both use On Hand Qty."
-                    )
+    else:
+        uploaded_file = st.file_uploader(
+            "Upload Excel Sales Report", type=["xlsx", "xls"], key=f"sales_upload_{selected_report}"
+        )
 
-            except Exception as e:
-                st.error(f"Unable to read inventory report: {e}")
+if selected_report and uploaded_file is not None:
+    st.success(f"Sales report uploaded: {uploaded_file.name}")
+    if selected_report == "fast_moving" and inventory_file is not None and selected_store:
+        st.success(f"Inventory uploaded: {inventory_file.name} | Store: {selected_store}")
+
+    st.divider()
+
+    target_selected = selected_report == "target"
+    daywise_selected = selected_report == "daywise"
+    salesman_selected = selected_report == "salesman"
+    mabellah_selected = selected_report == "mabellah"
+    pick_transfer_selected = selected_report == "pick"
+    delivery_selected = selected_report == "delivery"
+    fast_moving_selected = selected_report == "fast_moving"
 
     # ==========================================================
     # DELIVERY DATE FILTER
@@ -410,20 +350,6 @@ if uploaded_file is not None:
 
 
         # ======================================================
-        # CHECK FAST MOVING INPUTS
-        # ======================================================
-
-        if fast_moving_selected:
-            if inventory_file is None:
-                st.error("Please upload the Inventory Report Excel.")
-                st.stop()
-
-            if not selected_store:
-                st.error("Please select a store for the STORE column.")
-                st.stop()
-
-
-        # ======================================================
         # CHECK DELIVERY DATES
         # ======================================================
 
@@ -450,6 +376,10 @@ if uploaded_file is not None:
                 st.stop()
 
 
+        if fast_moving_selected and (inventory_file is None or not selected_store):
+            st.error("Please upload the Inventory Report and select a store.")
+            st.stop()
+
         # ======================================================
         # TEMP WORKING DIRECTORY
         # ======================================================
@@ -473,6 +403,11 @@ if uploaded_file is not None:
         input_path.write_bytes(
             uploaded_file.getvalue()
         )
+
+        inventory_path = None
+        if fast_moving_selected:
+            inventory_path = workdir / inventory_file.name
+            inventory_path.write_bytes(inventory_file.getvalue())
 
 
         # ======================================================
@@ -821,43 +756,15 @@ if uploaded_file is not None:
         # ======================================================
 
         if fast_moving_selected:
-
             try:
-
-                with st.spinner(
-                    "Matching Fast Moving Report with store and warehouse stock..."
-                ):
-
-                    inventory_path = workdir / inventory_file.name
-                    inventory_path.write_bytes(inventory_file.getvalue())
-
-                    output = workdir / "Fast_Moving_Report_With_Stock.xlsx"
-
+                with st.spinner("Generating Fast Moving Report..."):
+                    output = workdir / "Fast_Moving_Report.xlsx"
                     generate_fast_moving_report(
-                        main_file=str(input_path),
-                        inventory_file=str(inventory_path),
-                        selected_store=selected_store,
-                        output_file=str(output)
+                        str(input_path), str(inventory_path), selected_store, str(output)
                     )
-
-                    generated.append(
-                        (
-                            "📦 Fast Moving Report",
-                            output
-                        )
-                    )
-
+                    generated.append(("⚡ Fast Moving Report", output))
             except Exception as e:
-
-                errors.append(
-                    f"Fast Moving Report: {e}"
-                )
-
-            done += 1
-
-            progress.progress(
-                done / selected_count
-            )
+                errors.append(f"Fast Moving Report: {e}")
 
 
         # ======================================================
