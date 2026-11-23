@@ -58,7 +58,6 @@ def read_inventory(inventory_file):
 def create_fast_moving_report(sales_file, inventory_file, selected_store, output_file):
     sales = pd.read_excel(sales_file, dtype=object)
     part_col = _find_col(sales, ['PART NUMBER', 'PART NO', 'ITEM CODE', 'ITEM', 'SKU'])
-    brand_col = _find_col(sales, ['BRAND'], required=False)
     make_col = _find_col(sales, ['MAKE', 'MANUFACTURER'])
     sales_qty_col = _find_col(sales, [
         'LAST 3 MONTH SALES HAPPEN QUANTITY', 'LAST 3 MONTH SALES',
@@ -86,7 +85,9 @@ def create_fast_moving_report(sales_file, inventory_file, selected_store, output
     sales['_store_qty'] = [store_totals.get((p, m), 0) for p, m in zip(sales['_part_key'], sales['_make_key'])]
     sales['_wh_qty'] = [wh_totals.get((p, m), 0) for p, m in zip(sales['_part_key'], sales['_make_key'])]
 
-    # Keep one worksheet per Make; retain original row order inside each sheet.
+    # Keep only parts with zero available quantity in the selected store.
+    # Then create one worksheet per Make, retaining original row order.
+    sales = sales[sales['_store_qty'] == 0].copy()
     makes = [x for x in sales[make_col].dropna().astype(str).str.strip().unique() if x]
     if not makes:
         raise ValueError('No Make values found in the sales report.')
@@ -101,7 +102,7 @@ def create_fast_moving_report(sales_file, inventory_file, selected_store, output
     body_font = Font(name='Arial', size=10, bold=True, color='000000')
     thin_black = Side(style='thin', color='000000')
     cell_border = Border(left=thin_black, right=thin_black, top=thin_black, bottom=thin_black)
-    headers = ['PART NUMBER', 'BRAND', 'MAKE', 'LAST 3 MONTH SALES HAPPEN QUANTITY', 'STORE', 'WH']
+    headers = ['PART NUMBER', 'MAKE', 'LAST 3 MONTH SALES HAPPEN QUANTITY', 'STORE', 'WH']
 
     for make in makes:
         safe_name = re.sub(r'[\\/*?:\[\]]', '_', make)[:31] or 'MAKE'
@@ -113,7 +114,7 @@ def create_fast_moving_report(sales_file, inventory_file, selected_store, output
             n += 1
         ws = wb.create_sheet(name)
         make_rows = sales[sales[make_col].astype(str).str.strip().str.casefold() == make.casefold()]
-        ws.merge_cells('A1:F1')
+        ws.merge_cells('A1:E1')
         title_cell = ws['A1']
         title_cell.value = f'{make.upper()} FAST MOVING REPORT'
         title_cell.fill = yellow
@@ -131,7 +132,6 @@ def create_fast_moving_report(sales_file, inventory_file, selected_store, output
         for row_idx, (_, row) in enumerate(make_rows.iterrows(), 3):
             values = [
                 row.get(part_col, ''),
-                row.get(brand_col, '') if brand_col else '',
                 row.get(make_col, ''),
                 row.get(sales_qty_col, ''),
                 row['_store_qty'],
@@ -145,11 +145,11 @@ def create_fast_moving_report(sales_file, inventory_file, selected_store, output
                 cell.alignment = Alignment(horizontal='center', vertical='center')
                 cell.border = cell_border
 
-        widths = [20, 22, 16, 38, 16, 16]
+        widths = [20, 16, 38, 16, 16]
         for i, width in enumerate(widths, 1):
             ws.column_dimensions[get_column_letter(i)].width = width
         ws.freeze_panes = 'A3'
-        ws.auto_filter.ref = f'A2:F{max(2, ws.max_row)}'
+        ws.auto_filter.ref = f'A2:E{max(2, ws.max_row)}'
         ws.sheet_view.showGridLines = True
 
     wb.save(output_file)
