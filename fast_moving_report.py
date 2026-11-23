@@ -127,7 +127,7 @@ def create_fast_moving_report(sales_file, inventory_file, selected_store, output
             cell.font = white_bold
             cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
             cell.border = cell_border
-        ws.row_dimensions[2].height = 32
+        ws.row_dimensions[2].height = 28
 
         for row_idx, (_, row) in enumerate(make_rows.iterrows(), 3):
             values = [
@@ -145,7 +145,7 @@ def create_fast_moving_report(sales_file, inventory_file, selected_store, output
                 cell.alignment = Alignment(horizontal='center', vertical='center')
                 cell.border = cell_border
 
-        widths = [20, 16, 38, 16, 16]
+        widths = [22, 18, 40, 17, 17]
         for i, width in enumerate(widths, 1):
             ws.column_dimensions[get_column_letter(i)].width = width
         ws.freeze_panes = 'A3'
