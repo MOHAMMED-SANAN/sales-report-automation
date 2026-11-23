@@ -51,7 +51,7 @@ EXCEL_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
 
 if selected_report == 'Fast Moving Report':
     st.subheader('⚡ Fast Moving Report')
-    st.info('Upload the sales report and inventory report. Select a store to create a separate worksheet for every Make.')
+    st.info('Upload the sales report and inventory report. Select a store to create separate Make-wise sheets showing only parts with zero stock in that store.')
     sales_upload = st.file_uploader('1. Upload Fast Moving Sales Report', type=['xlsx', 'xls'], key='fm_sales')
     inventory_upload = st.file_uploader('2. Upload Inventory Report', type=['xlsx', 'xls'], key='fm_inventory')
     selected_store = None
